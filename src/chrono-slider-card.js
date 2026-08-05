@@ -75,9 +75,25 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.0.20';
+const CARD_VERSION = '1.0.21';
 
 // --- Version History ---------------------------------------------------------
+// v1.0.21: Fixed four rendering discrepancies found by comparing against
+//          vertical-slider-card side-by-side on a real dashboard: (1)
+//          slider/track color was falling back to generic theme colors
+//          instead of the entity-state color, because .control-slider-host's
+//          own --control-slider-color/--control-slider-background
+//          declarations clobbered the value set higher up on <ha-card> -
+//          the three color custom properties are now set directly on
+//          .control-slider-host instead. (2) :host had no margin (original
+//          has margin: 8px) - card touched the dashboard edge; restored.
+//          (3) .controls:not(:last-child) { margin-bottom: ... } was
+//          dropped during the port (only the inner .controls > * variant
+//          was kept) - the favorites row had no gap above it; restored.
+//          (4) Favorite-button margin increased 8px -> 12px to give the
+//          2x2 wrap (kept intentionally - narrower padding than the
+//          original's dialog-derived 24px is a deliberate choice here)
+//          proper breathing room instead of a cramped grid.
 // v1.0.20: Initial release of chrono-slider-card. Ground-up Lit 2.0
 //          rewrite of vertical-slider-card v0.0.12, following the
 //          chrono-* plugin conventions (csc prefix, generic helpers ->
@@ -864,13 +880,7 @@ class ChronoSliderCard extends LitElement {
       : '';
 
     return html`
-      <ha-card
-        style=${styleMap({
-          '--state-cover-inactive-color': openColor,
-          '--control-slider-color': color,
-          '--control-slider-background': color,
-        })}
-      >
+      <ha-card>
         ${this._showName ? html`<p class="card-title">${title}</p>` : ''}
 
         <div class="state-header">
@@ -886,7 +896,14 @@ class ChronoSliderCard extends LitElement {
 
         <div class="controls">
           <div class="main-control">
-            <div class=${classMap({ 'control-slider-host': true, active: this._toggleMode === 'position' })}>
+            <div
+              class=${classMap({ 'control-slider-host': true, active: this._toggleMode === 'position' })}
+              style=${styleMap({
+                '--state-cover-inactive-color': openColor,
+                '--control-slider-color': color,
+                '--control-slider-background': color,
+              })}
+            >
               <div
                 class="container"
                 style=${styleMap({ '--value': (value / 100).toString() })}
@@ -972,6 +989,7 @@ class ChronoSliderCard extends LitElement {
   static styles = css`
     :host {
       display: block;
+      margin: 8px;
     }
     ha-card {
       box-sizing: border-box;
@@ -1030,6 +1048,9 @@ class ChronoSliderCard extends LitElement {
       justify-content: center;
       flex: 1;
       width: 100%;
+    }
+    .controls:not(:last-child) {
+      margin-bottom: var(--ha-space-6, 24px);
     }
     .controls > *:not(:last-child) {
       margin-bottom: var(--ha-space-6, 24px);
@@ -1300,13 +1321,13 @@ class ChronoSliderCard extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: calc(var(--ha-space-2, 8px) * -1);
+      margin: -12px;
       flex-wrap: wrap;
       max-width: 384px;
       user-select: none;
     }
     .favorites-container > * {
-      margin: var(--ha-space-2, 8px);
+      margin: 12px;
     }
     .favorite-button {
       display: block;
