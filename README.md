@@ -42,6 +42,7 @@
 - [Usage](#usage)
   - [Adding the Card](#adding-the-card)
   - [Options](#options)
+  - [Custom Styling](#-custom-styling)
 - [Limitations](#limitations)
 - [License](#license)
 - [Support](#support)
@@ -63,7 +64,10 @@ Switch between the position slider and simple open/stop/close buttons, either as
 Set any number of one-tap favorite positions - not just open and closed. The default set is 0%, 25%, 75%, and 100%, fully customizable.
 
 ### 👁️ Show or Hide Anything
-Turn off the name, the state/relative-time label, the favorites row, or the slider/buttons toggle. Build the exact card you want.
+Turn off the name, the percentage, the relative-time label, the favorites row, or the slider/buttons toggle. Build the exact card you want.
+
+### 🎨 Custom CSS, From YAML
+Every element on the card - card, title, state, buttons, slider, favorites, and more - can be restyled directly from your dashboard config with a `styles:` block. No editing the card's source, no browser dev tools required.
 
 ### 📐 Fits Any Dashboard
 The card sizes itself to its own content and shrinks gracefully with the grid column width. It works the same in masonry, sections, and panel views, with no layout code needed.
@@ -135,7 +139,8 @@ entity: cover.living_room_awning
 name: Living Room Awning
 mode: awning
 show_name: true
-show_label: true
+show_percentage: true
+show_last_changed: true
 show_control_switch_buttons: false
 show_favorites: true
 default_control: slider
@@ -156,12 +161,36 @@ favorite_positions:
 | `fill_direction` | `extends`/`retracts` | (from `mode`) | Overrides the `mode` default directly, if you need to. `extends` means the fill grows as the cover extends. `retracts` means the fill grows as the cover retracts. |
 | `favorite_positions` | list of numbers | `[0, 25, 75, 100]` | The one-tap favorite positions shown below the slider. Any number of entries is supported. |
 | `show_name` | `true`/`false` | `true` | Shows the name above the card. |
-| `show_label` | `true`/`false` | `true` | Shows the relative-time label under the state text (e.g. "3 hours ago"). |
+| `show_percentage` | `true`/`false` | `true` | Shows the position percentage under the state text. |
+| `show_last_changed` | `true`/`false` | `true` | Shows the relative-time label under the state text (e.g. "3 hours ago"). |
 | `show_control_switch_buttons` | `true`/`false` | `false` | Shows the toggle icons that switch the card between the slider and the open/stop/close buttons. |
 | `show_favorites` | `true`/`false` | `true` | Shows the row of favorite-position buttons. |
 | `default_control` | `slider`/`buttons` | `slider` | Which control is shown by default when the card loads. |
+| `styles` | object | (none) | Advanced: restyle individual elements of the card directly from YAML. See [Custom Styling](#-custom-styling) below. |
 
-Using a key that isn't in this list, or a value that isn't valid, won't break the card - it's just ignored.
+Using a top-level key that isn't in this list, or a value that isn't valid, won't break the card - it's just ignored.
+
+### 🎨 Custom Styling
+
+Every visual piece of the card can be restyled directly from your dashboard config, without touching the card's source or your browser's dev tools. Under `styles:`, each entry is a CSS class name (written with underscores instead of dashes) paired with the CSS properties you want to change on it (also written with underscores):
+
+```yaml
+type: custom:chrono-slider-card
+entity: cover.living_room_blind
+styles:
+  slider:
+    border_width: 2px
+    border_style: solid
+    border_color: '#ff0000'
+  favorite_button:
+    border_radius: 4px
+```
+
+The class names match exactly what you'd find inspecting the card with your browser's dev tools (underscores instead of dashes). A handful of the most useful ones: `card`, `title`, `state`, `percentage`, `last_changed`, `slider`, `control_button_group`, `control_btn`, `icon_button_group`, `icon_toggle_button`, `favorites_container`, `favorite_button`.
+
+Some elements exist as more than one instance on the card - the three directional buttons, the two mode-toggle buttons, and the favorite-position buttons. Styling their shared class (e.g. `control_btn`, `icon_toggle_button`, `favorite_button`) changes all of them at once. To style just one, use its own specific class instead: `control_btn_close` / `control_btn_stop` / `control_btn_open` for the directional buttons, `icon_toggle_button_position` / `icon_toggle_button_button` for the mode-toggle buttons, and `favorite_button_<value>` (e.g. `favorite_button_30`) for an individual favorite position.
+
+There's no validation on `styles:` - any class name and any CSS property is accepted and applied exactly as written, even if it doesn't match anything on the card or doesn't make visual sense. This gives you full control, but also means a typo will silently do nothing rather than warn you.
 
 ---
 
