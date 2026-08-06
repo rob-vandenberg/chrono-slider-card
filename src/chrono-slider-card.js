@@ -75,9 +75,20 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.25';
+const CARD_VERSION = '1.1.26';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.26: v1.1.25 dropped text-align:center from .state-header p entirely
+//          along with the broken fixed-width-overflow centering it used to
+//          (incorrectly) also be responsible for. But text-align had a
+//          second, separate job: centering multiple wrapped lines relative
+//          to each other within a single paragraph (e.g. "20 hours" / "ago"
+//          on last-changed) - flexbox only centers the paragraph's own box,
+//          not the lines inside it. Re-added text-align:center to
+//          .state-header p. Safe this time: unlike the v1.1.24 bug, these
+//          boxes are no longer fixed-width (they shrink-wrap as flex
+//          items), so there's no oversized-content-vs-fixed-container
+//          mismatch for text-align to mishandle.
 // v1.1.25: The v1.1.24 centering fix (text-align:center on .state-header,
 //          display:inline-block on its children) was verified incorrect -
 //          reproduced in isolation that text-align never shifts oversized
@@ -1133,6 +1144,7 @@ class ChronoSliderCard extends LitElement {
     }
     .state-header p {
       margin: 0;
+      text-align: center;
     }
     .state-header .state {
       font-style: normal;
