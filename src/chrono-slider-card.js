@@ -75,9 +75,19 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.28';
+const CARD_VERSION = '1.1.29';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.29: Editor UI overhaul: Mode/Fill direction/Default control moved into a
+//          single grid row (1fr 1fr 1fr, cm grid technique) placed after Name and
+//          before all toggles. Toggle order changed to Show name -> Show state ->
+//          Show percentage -> Show last changed -> Show control switch buttons ->
+//          Show favorites, with Favorite positions directly below. Added new
+//          show_state config option (default true), mirroring the show_last_changed/
+//          show_percentage pattern: MODE_DEFAULTS (both blocks), setConfig(), editor
+//          toggle, and .state's <p> now conditional on it. Also added missing
+//          padding: var(--ha-space-1, 4px) 0; to .percentage, matching .last-changed
+//          (pending since v1.1.26, mistakenly dropped from v1.1.28).
 // v1.1.28: Specificity audit of the built-in stylesheet, so the styles:
 //          mechanism's flat single-class injected rules (see v1.1.23) reliably
 //          win via source order alone, without a specificity mismatch against
@@ -322,6 +332,7 @@ const MODE_DEFAULTS = {
     fill_direction: 'retracts',
     default_control: 'slider',
     show_name: true,
+    show_state: true,
     show_last_changed: true,
     show_percentage: true,
     show_control_switch_buttons: false,
@@ -332,6 +343,7 @@ const MODE_DEFAULTS = {
     fill_direction: 'extends',
     default_control: 'slider',
     show_name: true,
+    show_state: true,
     show_last_changed: true,
     show_percentage: true,
     show_control_switch_buttons: false,
@@ -949,6 +961,12 @@ class ChronoSliderCardEditor extends LitElement {
       justify-content: space-between;
       margin-bottom: 16px;
     }
+    .csc-select-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      align-items: end;
+    }
   `;
 
   render() {
@@ -967,43 +985,46 @@ class ChronoSliderCardEditor extends LitElement {
       </div>
 
       ${cscTextField('Name (optional)', c.name, (e) => this._valueChanged('name', e))}
+
+      <div class="csc-select-row">
+        ${cscSelectField(
+          'Mode',
+          c.mode ?? 'cover',
+          [
+            { value: 'cover', label: 'Cover' },
+            { value: 'awning', label: 'Awning' },
+          ],
+          (e) => this._valueChanged('mode', e)
+        )}
+        ${cscSelectField(
+          'Fill direction',
+          c.fill_direction ?? '',
+          [
+            { value: '', label: '(mode default)' },
+            { value: 'extends', label: 'Extends' },
+            { value: 'retracts', label: 'Retracts' },
+          ],
+          (e) => this._valueChanged('fill_direction', e)
+        )}
+        ${cscSelectField(
+          'Default control',
+          c.default_control ?? 'slider',
+          [
+            { value: 'slider', label: 'Slider' },
+            { value: 'buttons', label: 'Buttons' },
+          ],
+          (e) => this._valueChanged('default_control', e)
+        )}
+      </div>
+
       ${cscToggleField('Show name', c.show_name !== false, (e) => this._toggleChanged('show_name', e))}
-      ${cscToggleField('Show last changed', c.show_last_changed !== false, (e) =>
-        this._toggleChanged('show_last_changed', e)
-      )}
+      ${cscToggleField('Show state', c.show_state !== false, (e) => this._toggleChanged('show_state', e))}
       ${cscToggleField('Show percentage', c.show_percentage !== false, (e) =>
         this._toggleChanged('show_percentage', e)
       )}
-
-      ${cscSelectField(
-        'Mode',
-        c.mode ?? 'cover',
-        [
-          { value: 'cover', label: 'Cover' },
-          { value: 'awning', label: 'Awning' },
-        ],
-        (e) => this._valueChanged('mode', e)
+      ${cscToggleField('Show last changed', c.show_last_changed !== false, (e) =>
+        this._toggleChanged('show_last_changed', e)
       )}
-      ${cscSelectField(
-        'Fill direction',
-        c.fill_direction ?? '',
-        [
-          { value: '', label: '(mode default)' },
-          { value: 'extends', label: 'Extends' },
-          { value: 'retracts', label: 'Retracts' },
-        ],
-        (e) => this._valueChanged('fill_direction', e)
-      )}
-      ${cscSelectField(
-        'Default control',
-        c.default_control ?? 'slider',
-        [
-          { value: 'slider', label: 'Slider' },
-          { value: 'buttons', label: 'Buttons' },
-        ],
-        (e) => this._valueChanged('default_control', e)
-      )}
-
       ${cscToggleField(
         'Show control switch buttons',
         c.show_control_switch_buttons === true,
@@ -1059,6 +1080,7 @@ class ChronoSliderCard extends LitElement {
         : defaults.fill_direction;
 
     this._showName = config.show_name !== undefined ? config.show_name === true : defaults.show_name;
+    this._showState = config.show_state !== undefined ? config.show_state === true : defaults.show_state;
     this._showLastChanged =
       config.show_last_changed !== undefined ? config.show_last_changed === true : defaults.show_last_changed;
     this._showPercentage =
@@ -1302,7 +1324,7 @@ class ChronoSliderCard extends LitElement {
         ${this._showName ? html`<p class="card-title">${title}</p>` : ''}
 
         <div class="state-header">
-          <p class="state">${stateWord}</p>
+          ${this._showState ? html`<p class="state">${stateWord}</p>` : ''}
           ${this._showPercentage ? html`<p class="percentage">${value}%</p>` : ''}
           ${this._showLastChanged
             ? html`
@@ -1466,6 +1488,7 @@ class ChronoSliderCard extends LitElement {
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
       line-height: var(--ha-line-height-normal, 1.5);
+      padding: var(--ha-space-1, 4px) 0;
     }
     .time-row {
       position: relative;
