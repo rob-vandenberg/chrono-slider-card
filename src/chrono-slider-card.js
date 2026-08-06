@@ -76,9 +76,44 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.31';
+const CARD_VERSION = '1.2.32';
 
 // --- Version History ---------------------------------------------------------
+// v1.2.32: Greenfield redesign of device-type/orientation handling (no back-compat -
+//          card not yet publicly released). Removed `mode`, `fill_direction`, and
+//          MODE_DEFAULTS entirely. Replaced with `device_type` (cover/screen/awning)
+//          selecting a small preset table of 3 independent booleans -
+//          device_open_state, device_open_percentage, device_open_slider - each
+//          individually overridable via raw YAML (not exposed in the visual
+//          editor). All 3 resolved once in setConfig(), matching the existing
+//          resolve-once pattern. Percentage display and slider visual fill are now
+//          two independently-computed values (previously shared one formula via
+//          fill_direction, which could not express Cover vs. Screen - same slider
+//          convention, different percentage convention). The live-drag tooltip and
+//          release now correctly derive through device_open_slider (matching the
+//          slider's spatial domain) rather than device_open_percentage, then the
+//          displayed percentage is a second, separate conversion of that same raw
+//          position via device_open_percentage. State word now responds to
+//          device_open_state via a raw-state swap (open<->closed, opening<->closing)
+//          ahead of the existing, unchanged word switch - previously the word was
+//          unmodified raw entity.state with no inversion logic at all. Also fixed:
+//          cscIsFullyOpenCover/cscIsFullyClosedCover/cscIsOpeningCover/
+//          cscIsClosingCover/cscCanOpenCover/cscCanCloseCover now take
+//          device_open_state and key the "fully open/closed" raw position off it,
+//          instead of a hardcoded current_position===100/0 that was wrong for
+//          Awning. Also fixed: the Open/Close button icon glyphs were previously
+//          hardcoded to always show the inverted (Awning-shaped) glyph regardless
+//          of device type - now keyed off device_open_state so the icon matches
+//          whichever raw action actually fires. Also fixed: render()'s active-state
+//          slider color now derives from the same swapped effective state as the
+//          state word, so the accent color no longer contradicts the displayed
+//          word. show_name/show_state/show_last_changed/show_percentage/
+//          show_control_switch_buttons/show_favorites/default_control/
+//          favorite_positions are now fully decoupled from device_type - standalone
+//          constants, unaffected by this redesign. Editor: "Mode"+"Fill direction"
+//          fields replaced by a single "Device type" dropdown (Cover/Screen/
+//          Awning); "Default control" label renamed to "Control" (config key
+//          default_control unchanged).
 // v1.1.31: Added .toggle-field-wide / .toggle-field-narrow modifier classes,
 //          selected per call site via cscToggleField()'s existing extraClass
 //          argument (not hardcoded in the field) - lets the editor's render()
@@ -370,38 +405,44 @@ const UNAVAILABLE = 'unavailable';
 const HANDLE_MARGIN_PX = 130 / 8;
 const HANDLE_SIZE_PX = 4;
 
-// Two complete named default blocks, one per mode. Every configurable
-// default lives here as a key/value pair - nothing is hardcoded
-// elsewhere in the file. "cover" matches native HA (value 100/OPEN at
-// top, fill shrinks as the value increases). "awning" matches the
-// "cloth of the awning" model (value 100/OPEN at bottom, fill grows
-// top-down as the value increases). Differs from vertical-slider-card's
-// MODE_DEFAULTS only in show_control_switch_buttons (false here, was
-// true there - explicit v1.0.20 decision, see version history above).
-const MODE_DEFAULTS = {
+// Device-type preset table. Each of the 3 device-behavior booleans is
+// defined relative to the device being fully retracted (raw HA
+// current_position === 100, verified platform-wide, independent of
+// device_class). "cover" matches native HA's own unmodified
+// convention. Any of the 3 keys can be overridden individually via a
+// raw YAML key in the card config - never exposed in the visual
+// editor, which only ever offers the 3-way device_type picker.
+const DEVICE_TYPE_DEFAULTS = {
   cover: {
-    fill_direction: 'retracts',
-    default_control: 'slider',
-    show_name: true,
-    show_state: true,
-    show_last_changed: true,
-    show_percentage: true,
-    show_control_switch_buttons: false,
-    show_favorites: true,
-    favorite_positions: [0, 25, 75, 100],
+    device_open_state: true,
+    device_open_percentage: true,
+    device_open_slider: true,
+  },
+  screen: {
+    device_open_state: true,
+    device_open_percentage: false,
+    device_open_slider: true,
   },
   awning: {
-    fill_direction: 'extends',
-    default_control: 'slider',
-    show_name: true,
-    show_state: true,
-    show_last_changed: true,
-    show_percentage: true,
-    show_control_switch_buttons: false,
-    show_favorites: true,
-    favorite_positions: [0, 25, 75, 100],
+    device_open_state: false,
+    device_open_percentage: false,
+    device_open_slider: true,
   },
 };
+
+// Standalone config defaults, fully decoupled from device_type - each
+// resolves to its own independent value in setConfig() regardless of
+// which device type is selected. Values unchanged from the old
+// MODE_DEFAULTS bundle (which happened to be identical between cover
+// and awning for all of these already).
+const DEFAULT_SHOW_NAME = true;
+const DEFAULT_SHOW_STATE = true;
+const DEFAULT_SHOW_LAST_CHANGED = true;
+const DEFAULT_SHOW_PERCENTAGE = true;
+const DEFAULT_SHOW_CONTROL_SWITCH_BUTTONS = false;
+const DEFAULT_SHOW_FAVORITES = true;
+const DEFAULT_CONTROL = 'slider';
+const DEFAULT_FAVORITE_POSITIONS = [0, 25, 75, 100];
 
 // --- Generic csc-prefixed helper functions (pure, DOM-free) --------------------
 // Ported near-verbatim from vertical-slider-card - no dependency on the
@@ -430,33 +471,39 @@ function cscComputeCloseIcon(entity) {
   }
 }
 
-function cscIsFullyOpenCover(entity) {
+// deviceOpenState: true if raw HA current_position===100 (fully
+// retracted) is this device's "open" end - see DEVICE_TYPE_DEFAULTS.
+function cscIsFullyOpenCover(entity, deviceOpenState) {
   if (entity.attributes.current_position !== undefined) {
-    return entity.attributes.current_position === 100;
+    return entity.attributes.current_position === (deviceOpenState ? 100 : 0);
   }
-  return entity.state === 'open';
+  return entity.state === (deviceOpenState ? 'open' : 'closed');
 }
-function cscIsFullyClosedCover(entity) {
+function cscIsFullyClosedCover(entity, deviceOpenState) {
   if (entity.attributes.current_position !== undefined) {
-    return entity.attributes.current_position === 0;
+    return entity.attributes.current_position === (deviceOpenState ? 0 : 100);
   }
-  return entity.state === 'closed';
+  return entity.state === (deviceOpenState ? 'closed' : 'open');
 }
-function cscIsOpeningCover(entity) {
-  return entity.state === 'opening';
+function cscIsOpeningCover(entity, deviceOpenState) {
+  return entity.state === (deviceOpenState ? 'opening' : 'closing');
 }
-function cscIsClosingCover(entity) {
-  return entity.state === 'closing';
+function cscIsClosingCover(entity, deviceOpenState) {
+  return entity.state === (deviceOpenState ? 'closing' : 'opening');
 }
-function cscCanOpenCover(entity) {
+function cscCanOpenCover(entity, deviceOpenState) {
   if (entity.state === UNAVAILABLE) return false;
   const assumedState = entity.attributes.assumed_state === true;
-  return assumedState || (!cscIsFullyOpenCover(entity) && !cscIsOpeningCover(entity));
+  return (
+    assumedState || (!cscIsFullyOpenCover(entity, deviceOpenState) && !cscIsOpeningCover(entity, deviceOpenState))
+  );
 }
-function cscCanCloseCover(entity) {
+function cscCanCloseCover(entity, deviceOpenState) {
   if (entity.state === UNAVAILABLE) return false;
   const assumedState = entity.attributes.assumed_state === true;
-  return assumedState || (!cscIsFullyClosedCover(entity) && !cscIsClosingCover(entity));
+  return (
+    assumedState || (!cscIsFullyClosedCover(entity, deviceOpenState) && !cscIsClosingCover(entity, deviceOpenState))
+  );
 }
 function cscCanStopCover(entity) {
   return entity.state !== UNAVAILABLE;
@@ -965,16 +1012,7 @@ class ChronoSliderCardEditor extends LitElement {
   _valueChanged(key, e) {
     if (!this._config) return;
     const raw = e.target.value ?? e.detail?.value;
-    const next = { ...this._config };
-    // Empty selection on fill_direction means "use the mode default" -
-    // stored as an absent key, not a literal empty string, so
-    // setConfig()'s MODE_DEFAULTS fallback applies cleanly.
-    if (key === 'fill_direction' && raw === '') {
-      delete next.fill_direction;
-    } else {
-      next[key] = raw;
-    }
-    this._config = next;
+    this._config = { ...this._config, [key]: raw };
     this._emit();
   }
 
@@ -1055,11 +1093,11 @@ class ChronoSliderCardEditor extends LitElement {
       margin-top: 16px;
     }
 
-    /* csc-specific: no cm equivalent - the Mode/Fill direction/Default control
-       row, using cm's own grid-row technique. */
+    /* csc-specific: no cm equivalent - the Device type/Control row,
+       using cm's own grid-row technique. */
     .select-row {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
       align-items: end;
     }
@@ -1084,26 +1122,17 @@ class ChronoSliderCardEditor extends LitElement {
 
       <div class="select-row">
         ${cscSelectField(
-          'Mode',
-          c.mode ?? 'cover',
+          'Device type',
+          c.device_type ?? 'cover',
           [
             { value: 'cover', label: 'Cover' },
+            { value: 'screen', label: 'Screen' },
             { value: 'awning', label: 'Awning' },
           ],
-          (e) => this._valueChanged('mode', e)
+          (e) => this._valueChanged('device_type', e)
         )}
         ${cscSelectField(
-          'Fill direction',
-          c.fill_direction ?? '',
-          [
-            { value: '', label: '(mode default)' },
-            { value: 'extends', label: 'Extends' },
-            { value: 'retracts', label: 'Retracts' },
-          ],
-          (e) => this._valueChanged('fill_direction', e)
-        )}
-        ${cscSelectField(
-          'Default control',
+          'Control',
           c.default_control ?? 'slider',
           [
             { value: 'slider', label: 'Slider' },
@@ -1166,39 +1195,47 @@ class ChronoSliderCard extends LitElement {
     }
     this._config = config;
 
-    // mode selects the full default block below; each individual key,
-    // if given explicitly in config, always overrides its mode default.
-    this._mode = config.mode === 'awning' ? 'awning' : 'cover';
-    const defaults = MODE_DEFAULTS[this._mode];
+    // device_type selects the 3-boolean preset row below; each of the 3
+    // keys, if given explicitly in config, always overrides its preset
+    // default individually - the other 1-2 keys still come from the
+    // preset untouched.
+    this._deviceType =
+      config.device_type === 'screen' || config.device_type === 'awning' ? config.device_type : 'cover';
+    const devicePreset = DEVICE_TYPE_DEFAULTS[this._deviceType];
 
-    this._fillDirection =
-      config.fill_direction === 'extends' || config.fill_direction === 'retracts'
-        ? config.fill_direction
-        : defaults.fill_direction;
+    this._deviceOpenState =
+      config.device_open_state !== undefined ? config.device_open_state === true : devicePreset.device_open_state;
+    this._deviceOpenPercentage =
+      config.device_open_percentage !== undefined
+        ? config.device_open_percentage === true
+        : devicePreset.device_open_percentage;
+    this._deviceOpenSlider =
+      config.device_open_slider !== undefined ? config.device_open_slider === true : devicePreset.device_open_slider;
 
-    this._showName = config.show_name !== undefined ? config.show_name === true : defaults.show_name;
-    this._showState = config.show_state !== undefined ? config.show_state === true : defaults.show_state;
+    // Standalone settings - independent of device_type entirely.
+    this._showName = config.show_name !== undefined ? config.show_name === true : DEFAULT_SHOW_NAME;
+    this._showState = config.show_state !== undefined ? config.show_state === true : DEFAULT_SHOW_STATE;
     this._showLastChanged =
-      config.show_last_changed !== undefined ? config.show_last_changed === true : defaults.show_last_changed;
+      config.show_last_changed !== undefined ? config.show_last_changed === true : DEFAULT_SHOW_LAST_CHANGED;
     this._showPercentage =
-      config.show_percentage !== undefined ? config.show_percentage === true : defaults.show_percentage;
+      config.show_percentage !== undefined ? config.show_percentage === true : DEFAULT_SHOW_PERCENTAGE;
 
     this._favoritePositions = cscNormalizeFavoritePositions(
       Array.isArray(config.favorite_positions) && config.favorite_positions.length
         ? config.favorite_positions
-        : defaults.favorite_positions
+        : DEFAULT_FAVORITE_POSITIONS
     );
 
     this._showControlSwitchButtons =
       config.show_control_switch_buttons !== undefined
         ? config.show_control_switch_buttons === true
-        : defaults.show_control_switch_buttons;
+        : DEFAULT_SHOW_CONTROL_SWITCH_BUTTONS;
     this._showFavorites =
-      config.show_favorites !== undefined ? config.show_favorites === true : defaults.show_favorites;
+      config.show_favorites !== undefined ? config.show_favorites === true : DEFAULT_SHOW_FAVORITES;
     this._defaultControl =
       config.default_control === 'buttons' || config.default_control === 'slider'
         ? config.default_control
-        : defaults.default_control;
+        : DEFAULT_CONTROL;
 
     this._toggleMode = this._defaultControl === 'buttons' ? 'button' : 'position';
     this._dragging = false;
@@ -1264,15 +1301,36 @@ class ChronoSliderCard extends LitElement {
     this._tooltipEl = this.renderRoot.querySelector('.tooltip');
   }
 
-  _currentValue() {
+  // Raw HA current_position (0-100, verified platform-wide: 100 = fully
+  // retracted, independent of device_class). Shared source of truth -
+  // percentage and slider fill are two independent conversions of the
+  // same raw number, since device_open_percentage and device_open_slider
+  // can disagree (that's exactly what distinguishes Cover from Screen).
+  _rawPosition() {
     if (!this._entity) return null;
-    const rawPosition =
-      this._entity.attributes.current_position != null
-        ? this._entity.attributes.current_position
-        : this._entity.state === 'open'
-        ? 100
-        : 0;
-    return this._fillDirection === 'retracts' ? 100 - rawPosition : rawPosition;
+    return this._entity.attributes.current_position != null
+      ? this._entity.attributes.current_position
+      : this._entity.state === 'open'
+      ? 100
+      : 0;
+  }
+
+  _displayPercentage(rawPosition) {
+    return this._deviceOpenPercentage ? rawPosition : 100 - rawPosition;
+  }
+
+  _sliderFraction(rawPosition) {
+    return this._deviceOpenSlider ? rawPosition : 100 - rawPosition;
+  }
+
+  _currentValue() {
+    const rawPosition = this._rawPosition();
+    return rawPosition == null ? null : this._displayPercentage(rawPosition);
+  }
+
+  _currentSliderValue() {
+    const rawPosition = this._rawPosition();
+    return rawPosition == null ? null : this._sliderFraction(rawPosition);
   }
 
   // ---- Slider drag handling ----
@@ -1291,10 +1349,18 @@ class ChronoSliderCard extends LitElement {
     return Math.max(0, Math.min(100, Math.round(value)));
   }
 
-  _paint(value) {
-    const fraction = value / 100;
+  // sliderValue is in slider-fill space (direct pixel mapping of where
+  // the user dragged) - written straight to --value. The tooltip shows
+  // the displayed percentage instead, which is a second, independent
+  // conversion: slider value -> raw position (via device_open_slider) ->
+  // displayed percentage (via device_open_percentage).
+  _paint(sliderValue) {
+    const fraction = sliderValue / 100;
     if (this._containerEl) this._containerEl.style.setProperty('--value', fraction.toString());
-    if (this._tooltipEl) this._tooltipEl.textContent = `${value}%`;
+    if (this._tooltipEl) {
+      const rawPosition = this._deviceOpenSlider ? sliderValue : 100 - sliderValue;
+      this._tooltipEl.textContent = `${this._displayPercentage(rawPosition)}%`;
+    }
   }
 
   _onSliderPointerDown(e) {
@@ -1326,7 +1392,10 @@ class ChronoSliderCard extends LitElement {
     const value = this._dragValue;
     this._dragValue = null;
     if (this._hass && this._config?.entity != null && value != null) {
-      const rawValue = this._fillDirection === 'retracts' ? 100 - value : value;
+      // value is in slider-fill space (same domain _paint() writes to
+      // --value), so it converts to raw position via device_open_slider,
+      // not device_open_percentage.
+      const rawValue = this._deviceOpenSlider ? value : 100 - value;
       this._hass.callService('cover', 'set_cover_position', {
         entity_id: this._config.entity,
         position: rawValue,
@@ -1350,8 +1419,11 @@ class ChronoSliderCard extends LitElement {
   // ---- Control actions ----
   _callDirectional(ourAction) {
     if (!this._hass || !this._entity) return;
-    const rawAction = this._fillDirection === 'retracts' ? (ourAction === 'open' ? 'close' : 'open') : ourAction;
-    const disabled = rawAction === 'open' ? !cscCanOpenCover(this._entity) : !cscCanCloseCover(this._entity);
+    const rawAction = this._deviceOpenState ? ourAction : ourAction === 'open' ? 'close' : 'open';
+    const disabled =
+      rawAction === 'open'
+        ? !cscCanOpenCover(this._entity, this._deviceOpenState)
+        : !cscCanCloseCover(this._entity, this._deviceOpenState);
     if (disabled) return;
     this._hass.callService('cover', `${rawAction}_cover`, { entity_id: this._config.entity });
   }
@@ -1363,7 +1435,9 @@ class ChronoSliderCard extends LitElement {
 
   _applyFavorite(pos) {
     if (!this._hass || !this._config?.entity) return;
-    const rawValue = this._fillDirection === 'retracts' ? 100 - pos : pos;
+    // favorite_positions are displayed percentages, so convert via
+    // device_open_percentage (not device_open_slider).
+    const rawValue = this._deviceOpenPercentage ? pos : 100 - pos;
     this._hass.callService('cover', 'set_cover_position', { entity_id: this._config.entity, position: rawValue });
   }
 
@@ -1376,9 +1450,18 @@ class ChronoSliderCard extends LitElement {
     if (!this._config || !this._entity) return html``;
     const entity = this._entity;
     const value = this._currentValue();
+    const sliderValue = this._currentSliderValue();
+
+    // Raw entity.state, swapped when this device's "open" isn't HA's
+    // native "open" (device_open_state===false) - open<->closed and
+    // opening<->closing both swap, so the word stays internally
+    // consistent with itself mid-transition. Word text itself (below)
+    // is unchanged.
+    const STATE_SWAP = { open: 'closed', closed: 'open', opening: 'closing', closing: 'opening' };
+    const effectiveState = this._deviceOpenState ? entity.state : STATE_SWAP[entity.state] ?? entity.state;
 
     let stateWord = '';
-    switch (entity.state) {
+    switch (effectiveState) {
       case 'open':
         stateWord = 'Opened';
         break;
@@ -1392,24 +1475,33 @@ class ChronoSliderCard extends LitElement {
         stateWord = 'Closing';
         break;
       default:
-        stateWord = entity.state;
+        stateWord = effectiveState;
     }
     const deviceClass = entity.attributes.device_class;
+    // openColor intentionally stays keyed to the literal raw 'open'
+    // color regardless of device_open_state - a fixed style reference,
+    // not tied to this device's actual current state.
     const openColor = cscStateColorCssCover(entity.state, deviceClass, 'open');
-    const color = cscStateColorCssCover(entity.state, deviceClass);
+    const color = cscStateColorCssCover(effectiveState, deviceClass);
 
-    const rawOpenAction = this._fillDirection === 'retracts' ? 'close' : 'open';
-    const rawCloseAction = this._fillDirection === 'retracts' ? 'open' : 'close';
-    const openDisabled = rawOpenAction === 'open' ? !cscCanOpenCover(entity) : !cscCanCloseCover(entity);
-    const closeDisabled = rawCloseAction === 'open' ? !cscCanOpenCover(entity) : !cscCanCloseCover(entity);
+    const rawOpenAction = this._deviceOpenState ? 'open' : 'close';
+    const rawCloseAction = this._deviceOpenState ? 'close' : 'open';
+    const openDisabled =
+      rawOpenAction === 'open'
+        ? !cscCanOpenCover(entity, this._deviceOpenState)
+        : !cscCanCloseCover(entity, this._deviceOpenState);
+    const closeDisabled =
+      rawCloseAction === 'open'
+        ? !cscCanOpenCover(entity, this._deviceOpenState)
+        : !cscCanCloseCover(entity, this._deviceOpenState);
     const stopDisabled = !cscCanStopCover(entity);
 
-    // Our "open" means extend/block-sun - the opposite of what
-    // computeOpenIcon assumes (native's "open" = retract = up-arrow), so
-    // the glyph shown on our open/close buttons is intentionally swapped,
-    // matching the same inversion applied everywhere else in this card.
-    const openIconPath = cscComputeCloseIcon(entity);
-    const closeIconPath = cscComputeOpenIcon(entity);
+    // Icon glyph matches whichever raw action actually fires when that
+    // button is pressed (computeOpenIcon/computeCloseIcon are glyph
+    // shapes for the native-open/native-close motion, independent of
+    // our labels).
+    const openIconPath = this._deviceOpenState ? cscComputeOpenIcon(entity) : cscComputeCloseIcon(entity);
+    const closeIconPath = this._deviceOpenState ? cscComputeCloseIcon(entity) : cscComputeOpenIcon(entity);
 
     const title = this._showName
       ? this._config.name || entity.attributes.friendly_name || this._config.entity
@@ -1438,7 +1530,7 @@ class ChronoSliderCard extends LitElement {
             >
               <div
                 class="container"
-                style=${styleMap({ '--value': (value / 100).toString() })}
+                style=${styleMap({ '--value': (sliderValue / 100).toString() })}
                 @pointerdown=${(e) => this._onSliderPointerDown(e)}
               >
                 <div id="slider" class="slider" role="slider" tabindex="0" aria-orientation="vertical">
@@ -1944,6 +2036,6 @@ window.customCards.push({
   type: 'chrono-slider-card',
   name: 'Chrono Slider Card',
   description:
-    'Standalone dashboard card for cover-domain entities (blinds, shades, screens, awnings) with configurable mode (cover/awning) and fill_direction (extends/retracts).',
+    'Standalone dashboard card for cover-domain entities (blinds, shades, screens, awnings) with a configurable device type (cover/screen/awning) defining open/closed, percentage, and slider conventions.',
   preview: true,
 });
