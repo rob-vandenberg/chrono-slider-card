@@ -75,9 +75,24 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.26';
+const CARD_VERSION = '1.1.27';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.27: Brought csc-* editor field helpers to parity with chrono-markdown-card's
+//          cm-* equivalents. cscTextField/CscTextfield now forward type/step/min/max
+//          (matching cmTextField/CmTextfield); CscTextfield input dimensions matched
+//          to CmTextfield (height 40px->56px, padding 0 8px->0 12px, font-size
+//          14px->16px); .csc-field label gained font-weight:600 to match .text-field
+//          label. cscSelectField's native <select> replaced with new chrono-csc-select
+//          custom element (CscSelect), ported from chrono-cm-select's CmSelect
+//          (styled combobox, dropdown, chevron, keyboard nav, outside-click close) -
+//          but NOT a straight port: unlike CmSelect's freeform text-commit behaviour,
+//          CscSelect restricts committed value to list options only. Typing filters/
+//          narrows the dropdown and moves the keyboard cursor to the best match;
+//          value only commits on click, Enter on a highlighted option, or exact-match
+//          blur/tab-away. Non-matching text reverts to the last valid value on blur.
+//          Affects all three existing combobox fields (Mode, Fill direction, Default
+//          control) automatically via the shared cscSelectField() call sites.
 // v1.1.26: v1.1.25 dropped text-align:center from .state-header p entirely
 //          along with the broken fixed-width-overflow centering it used to
 //          (incorrectly) also be responsible for. But text-align had a
@@ -474,6 +489,10 @@ function cscTextField(label, value, onChange, opts = {}) {
       <label>${label}</label>
       <chrono-csc-textfield
         .value=${String(value ?? '')}
+        type=${opts.type ?? 'text'}
+        step=${opts.step ?? ''}
+        min=${opts.min ?? ''}
+        max=${opts.max ?? ''}
         placeholder=${opts.placeholder ?? ''}
         @input=${onChange}
       ></chrono-csc-textfield>
@@ -494,11 +513,11 @@ function cscSelectField(label, value, options, onChange) {
   return html`
     <div class="csc-field">
       <label>${label}</label>
-      <select @change=${onChange}>
-        ${options.map(
-          (opt) => html`<option value=${opt.value} ?selected=${opt.value === value}>${opt.label}</option>`
-        )}
-      </select>
+      <chrono-csc-select
+        .value=${value ?? ''}
+        .options=${options}
+        @change=${onChange}
+      ></chrono-csc-select>
     </div>
   `;
 }
@@ -512,6 +531,10 @@ function cscSelectField(label, value, options, onChange) {
 class CscTextfield extends LitElement {
   static properties = {
     value: { type: String },
+    type: { type: String },
+    step: { type: String },
+    min: { type: String },
+    max: { type: String },
     placeholder: { type: String },
   };
 
@@ -524,14 +547,14 @@ class CscTextfield extends LitElement {
       display: block;
       width: 100%;
       box-sizing: border-box;
-      height: 40px;
-      padding: 0 8px;
+      height: 56px;
+      padding: 0 12px;
       background: var(--input-fill-color, rgba(0, 0, 0, 0.06));
       border: none;
       border-bottom: 1px solid var(--secondary-text-color, #888);
       border-radius: 4px 4px 0 0;
       color: var(--primary-text-color);
-      font-size: 14px;
+      font-size: 16px;
       font-family: inherit;
       outline: none;
       transition: border-bottom-color 0.2s;
@@ -545,6 +568,10 @@ class CscTextfield extends LitElement {
     return html`
       <input
         .value=${live(this.value ?? '')}
+        type=${this.type ?? 'text'}
+        step=${this.step ?? ''}
+        min=${this.min ?? ''}
+        max=${this.max ?? ''}
         placeholder=${this.placeholder ?? ''}
         @input=${(e) => {
           this.value = e.target.value;
@@ -555,6 +582,284 @@ class CscTextfield extends LitElement {
   }
 }
 customElements.define('chrono-csc-textfield', CscTextfield);
+
+// --- chrono-csc-select component ------------------------------------------------
+// Shadow-DOM styled combobox, ported from chrono-markdown-card's
+// chrono-cm-select (CmSelect): dropdown, chevron, keyboard nav
+// (Arrow/Enter/Escape), outside-click close. Deliberately NOT a
+// straight port: CmSelect commits raw typed text as the value on every
+// keystroke (freeform). This component restricts the committed value
+// to the supplied options list only - typing filters/narrows the
+// dropdown and moves the keyboard cursor to the best match; the value
+// only commits via click, Enter on a highlighted option, or an exact
+// (case-insensitive) label match on blur/tab-away/outside-click.
+// Non-matching typed text reverts the display back to the last
+// committed value.
+class CscSelect extends LitElement {
+  static properties = {
+    value: { type: String },
+    options: { type: Array },
+    _open: { state: true },
+    _cursor: { state: true },
+    _filterText: { state: true },
+  };
+
+  static styles = css`
+    :host {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      position: relative;
+    }
+
+    .combobox {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      box-sizing: border-box;
+      height: 56px;
+      background: var(--input-fill-color, rgba(0, 0, 0, 0.06));
+      border: none;
+      border-bottom: 1px solid var(--secondary-text-color, #888);
+      border-radius: 4px 4px 0 0;
+      transition: border-bottom-color 0.2s;
+    }
+
+    .combobox:focus-within,
+    .combobox-open {
+      border-bottom: 2px solid var(--primary-color);
+    }
+
+    .combobox-input {
+      flex: 1;
+      height: 100%;
+      padding: 0 8px 0 12px;
+      background: transparent;
+      border: none;
+      color: var(--primary-text-color);
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .combobox-chevron {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 100%;
+      cursor: pointer;
+      color: var(--secondary-text-color);
+      font-size: 12px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .combobox-chevron:hover {
+      color: var(--primary-text-color);
+    }
+
+    .combobox-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      background: var(--card-background-color, #1c1c1c);
+      border: 1px solid var(--divider-color, #444);
+      border-radius: 0 0 4px 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      max-height: 240px;
+      overflow-y: auto;
+      margin-top: 1px;
+    }
+
+    .combobox-option {
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--primary-text-color);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .combobox-option:hover {
+      background: var(--secondary-background-color, rgba(255, 255, 255, 0.08));
+    }
+
+    .combobox-option-selected {
+      color: var(--primary-color);
+    }
+
+    .combobox-option-cursor {
+      background: var(--secondary-background-color, rgba(255, 255, 255, 0.08));
+    }
+
+    .combobox-option-empty {
+      color: var(--secondary-text-color);
+      cursor: default;
+    }
+
+    .combobox-option-empty:hover {
+      background: transparent;
+    }
+  `;
+
+  constructor() {
+    super();
+    this.value = '';
+    this.options = [];
+    this._open = false;
+    this._cursor = -1;
+    this._filterText = null;
+    this._onOutsideClick = this._onOutsideClick.bind(this);
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    document.addEventListener('click', this._onOutsideClick);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    document.removeEventListener('click', this._onOutsideClick);
+  }
+
+  get _displayText() {
+    if (this._filterText !== null) return this._filterText;
+    const match = (this.options ?? []).find((o) => o.value === this.value);
+    return match ? match.label : (this.value ?? '');
+  }
+
+  _filteredOptions() {
+    const opts = this.options ?? [];
+    if (this._filterText === null || this._filterText === '') return opts;
+    const q = this._filterText.toLowerCase();
+    return opts.filter((o) => o.label.toLowerCase().includes(q));
+  }
+
+  _onOutsideClick(e) {
+    if (!this.shadowRoot.contains(e.composedPath()[0]) && e.composedPath()[0] !== this) {
+      this._revertOrExactMatch();
+    }
+  }
+
+  _commit(value) {
+    this.value = value;
+    this._filterText = null;
+    this._open = false;
+    this._cursor = -1;
+    this.dispatchEvent(new CustomEvent('change', {
+      detail: { value },
+      bubbles: true,
+      composed: true,
+    }));
+  }
+
+  _revertOrExactMatch() {
+    if (this._filterText === null) {
+      this._open = false;
+      this._cursor = -1;
+      return;
+    }
+    const q = this._filterText.toLowerCase();
+    const exact = (this.options ?? []).find((o) => o.label.toLowerCase() === q);
+    if (exact) {
+      this._commit(exact.value);
+    } else {
+      this._filterText = null;
+      this._open = false;
+      this._cursor = -1;
+    }
+  }
+
+  _toggleOpen() {
+    if (this._open) {
+      this._revertOrExactMatch();
+    } else {
+      this._open = true;
+      this._cursor = -1;
+      this.shadowRoot.querySelector('.combobox-input').focus();
+    }
+  }
+
+  _handleInput(e) {
+    this._filterText = e.target.value;
+    this._open = true;
+    const filtered = this._filteredOptions();
+    this._cursor = filtered.length ? 0 : -1;
+  }
+
+  _handleKeyDown(e) {
+    const filtered = this._filteredOptions();
+
+    if (!this._open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        this._open = true;
+        this._cursor = filtered.length ? 0 : -1;
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      this._cursor = Math.min(this._cursor + 1, filtered.length - 1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      this._cursor = Math.max(this._cursor - 1, 0);
+      e.preventDefault();
+    } else if (e.key === 'Enter') {
+      if (this._cursor >= 0 && this._cursor < filtered.length) {
+        this._commit(filtered[this._cursor].value);
+      } else {
+        this._revertOrExactMatch();
+      }
+      e.preventDefault();
+    } else if (e.key === 'Escape') {
+      this._filterText = null;
+      this._open = false;
+      this._cursor = -1;
+      e.preventDefault();
+    }
+  }
+
+  render() {
+    const filtered = this._filteredOptions();
+
+    return html`
+      <div class="combobox ${this._open ? 'combobox-open' : ''}">
+        <input
+          class="combobox-input"
+          .value=${live(this._displayText)}
+          @input=${this._handleInput}
+          @blur=${() => this._revertOrExactMatch()}
+          @keydown=${this._handleKeyDown}
+        >
+        <div
+          class="combobox-chevron"
+          @click=${() => this._toggleOpen()}
+          aria-hidden="true"
+        >${this._open ? '▴' : '▾'}</div>
+      </div>
+
+      ${this._open ? html`
+        <div class="combobox-dropdown">
+          ${filtered.length ? filtered.map((opt, i) => html`
+            <div
+              class="combobox-option
+                     ${opt.value === this.value ? 'combobox-option-selected' : ''}
+                     ${i === this._cursor       ? 'combobox-option-cursor'   : ''}"
+              @mousedown=${(e) => { e.preventDefault(); this._commit(opt.value); }}
+            >${opt.label}</div>
+          `) : html`<div class="combobox-option combobox-option-empty">No matches</div>`}
+        </div>
+      ` : ''}
+    `;
+  }
+}
+customElements.define('chrono-csc-select', CscSelect);
 
 // --- Editor --------------------------------------------------------------------
 class ChronoSliderCardEditor extends LitElement {
@@ -619,6 +924,7 @@ class ChronoSliderCardEditor extends LitElement {
     .csc-field label {
       display: block;
       font-size: 12px;
+      font-weight: 600;
       color: var(--secondary-text-color);
       margin-bottom: 4px;
     }
@@ -627,18 +933,6 @@ class ChronoSliderCardEditor extends LitElement {
       align-items: center;
       justify-content: space-between;
       margin-bottom: 16px;
-    }
-    select {
-      width: 100%;
-      height: 40px;
-      box-sizing: border-box;
-      background: var(--input-fill-color, rgba(0, 0, 0, 0.06));
-      border: none;
-      border-bottom: 1px solid var(--secondary-text-color, #888);
-      border-radius: 4px 4px 0 0;
-      color: var(--primary-text-color);
-      font-family: inherit;
-      font-size: 14px;
     }
   `;
 
