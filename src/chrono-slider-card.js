@@ -75,9 +75,27 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.0.22';
+const CARD_VERSION = '1.1.23';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.23: Implemented the styles: YAML->CSS feature. config.styles is a flat
+//          object of { class_name: { property: value } } blocks - class_name
+//          uses underscores (matches devtools with dashes swapped for
+//          underscores), converted to a kebab-case CSS selector; each
+//          property is likewise converted from snake_case to kebab-case.
+//          Built once in setConfig() into a single CSS text block (no
+//          per-render rebuild, no DOM lookups, no target whitelist - any
+//          class name and any property is accepted and injected as-is,
+//          unvalidated). Injected via a <style> tag in render(), placed
+//          after the card's own static styling so cascade tie-breaking
+//          naturally lets user overrides win. To make individual elements
+//          addressable where more than one instance of the same element
+//          exists, added a second, specific class alongside the existing
+//          shared one: control-btn-close/-stop/-open on the directional
+//          buttons, icon-toggle-button-position/-button on the mode-toggle
+//          buttons, and a dynamic favorite-button-<value> per favorite
+//          position. <ha-card> also gained a plain "ha-card" class, since
+//          it previously had none.
 // v1.0.22: Fixed two issues found via a console-measured element-rect dump
 //          comparing against vertical-slider-card side-by-side: (1)
 //          .state-header (the "Closed" / relative-time block) was
@@ -385,6 +403,30 @@ function cscRelativeTimeText(dateString) {
 
 // --- Editor field helper functions --------------------------------------------
 
+// Converts a snake_case string to kebab-case. Used for both class names and
+// CSS property names coming from config.styles, since CSS text treats them
+// identically syntactically.
+function cscToKebab(str) {
+  return String(str).replace(/_/g, '-');
+}
+
+// Converts config.styles (a flat { class_name: { property: value } } object)
+// into a single ready-to-inject CSS text block. No validation of class names
+// or property names against anything - any key the user writes is accepted
+// and converted as-is; this is a literal YAML->CSS translation, not a
+// filtered one.
+function cscBuildUserStylesCss(stylesConfig) {
+  let css = '';
+  for (const [className, props] of Object.entries(stylesConfig)) {
+    if (!props || typeof props !== 'object' || Array.isArray(props)) continue;
+    const declarations = Object.entries(props)
+      .map(([prop, value]) => `${cscToKebab(prop)}: ${value};`)
+      .join(' ');
+    css += `.${cscToKebab(className)} { ${declarations} }\n`;
+  }
+  return css;
+}
+
 function cscTextField(label, value, onChange, opts = {}) {
   return html`
     <div class="csc-field">
@@ -684,6 +726,13 @@ class ChronoSliderCard extends LitElement {
     this._toggleMode = this._defaultControl === 'buttons' ? 'button' : 'position';
     this._dragging = false;
     this._dragValue = null;
+
+    let stylesConfig = config.styles;
+    if (stylesConfig !== undefined && (typeof stylesConfig !== 'object' || Array.isArray(stylesConfig))) {
+      console.warn('chrono-slider-card: "styles" must be an object, ignoring.');
+      stylesConfig = {};
+    }
+    this._userStylesCss = cscBuildUserStylesCss(stylesConfig || {});
   }
 
   set hass(hass) {
@@ -894,7 +943,8 @@ class ChronoSliderCard extends LitElement {
       : '';
 
     return html`
-      <ha-card>
+      <ha-card class="ha-card">
+        <style>${this._userStylesCss}</style>
         ${this._showName ? html`<p class="card-title">${title}</p>` : ''}
 
         <div class="state-header">
@@ -932,21 +982,21 @@ class ChronoSliderCard extends LitElement {
             </div>
             <div class=${classMap({ 'control-button-group': true, active: this._toggleMode === 'button' })}>
               <button
-                class=${classMap({ 'control-btn': true, disabled: closeDisabled })}
+                class=${classMap({ 'control-btn': true, 'control-btn-close': true, disabled: closeDisabled })}
                 @click=${() => this._callDirectional('close')}
                 aria-label="Close"
               >
                 <svg viewBox="0 0 24 24"><path d=${closeIconPath}></path></svg>
               </button>
               <button
-                class=${classMap({ 'control-btn': true, disabled: stopDisabled })}
+                class=${classMap({ 'control-btn': true, 'control-btn-stop': true, disabled: stopDisabled })}
                 @click=${() => this._stopCover()}
                 aria-label="Stop"
               >
                 <svg viewBox="0 0 24 24"><path d=${ICON_STOP}></path></svg>
               </button>
               <button
-                class=${classMap({ 'control-btn': true, disabled: openDisabled })}
+                class=${classMap({ 'control-btn': true, 'control-btn-open': true, disabled: openDisabled })}
                 @click=${() => this._callDirectional('open')}
                 aria-label="Open"
               >
@@ -958,14 +1008,22 @@ class ChronoSliderCard extends LitElement {
             ? html`
                 <div class="icon-button-group">
                   <button
-                    class=${classMap({ 'icon-toggle-button': true, selected: this._toggleMode === 'position' })}
+                    class=${classMap({
+                      'icon-toggle-button': true,
+                      'icon-toggle-button-position': true,
+                      selected: this._toggleMode === 'position',
+                    })}
                     @click=${() => this._setToggleMode('position')}
                     aria-label="Position mode"
                   >
                     <svg viewBox="0 0 24 24"><path d=${ICON_MENU}></path></svg>
                   </button>
                   <button
-                    class=${classMap({ 'icon-toggle-button': true, selected: this._toggleMode === 'button' })}
+                    class=${classMap({
+                      'icon-toggle-button': true,
+                      'icon-toggle-button-button': true,
+                      selected: this._toggleMode === 'button',
+                    })}
                     @click=${() => this._setToggleMode('button')}
                     aria-label="Button mode"
                   >
@@ -984,7 +1042,11 @@ class ChronoSliderCard extends LitElement {
                     ${this._favoritePositions.map(
                       (pos) => html`
                         <div
-                          class=${classMap({ 'favorite-button': true, active: pos === value })}
+                          class=${classMap({
+                            'favorite-button': true,
+                            [`favorite-button-${pos}`]: true,
+                            active: pos === value,
+                          })}
                           @click=${() => this._applyFavorite(pos)}
                         >
                           <div class="button-inner"><span class="button-label">${pos}%</span></div>
