@@ -76,9 +76,19 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.30';
+const CARD_VERSION = '1.1.31';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.31: Added .toggle-field-wide / .toggle-field-narrow modifier classes,
+//          selected per call site via cscToggleField()'s existing extraClass
+//          argument (not hardcoded in the field) - lets the editor's render()
+//          decide toggle+label arrangement per row instead of the field
+//          component deciding for it. Base .toggle-field remains untouched,
+//          verbatim cm (label-first, tight gap) for any future multi-per-row
+//          use. -wide: label left, switch right-aligned - applied to all six
+//          of this card's existing toggles (currently one per row). -narrow:
+//          switch first then label, tight gap, left-aligned when stacked - not
+//          used anywhere yet, added for future multi-per-row toggle groups.
 // v1.1.30: Editor field helpers (cscTextField/CscTextfield, cscToggleField,
 //          cscSelectField/CscSelect) brought to true verbatim parity with
 //          chrono-markdown-card's cm-* equivalents, prefix swapped cm->csc only:
@@ -1012,6 +1022,23 @@ class ChronoSliderCardEditor extends LitElement {
       color: var(--secondary-text-color);
     }
 
+    /* csc-specific: no cm equivalent - layout modifiers for .toggle-field,
+       chosen per call site via cscToggleField()'s extraClass argument, not
+       hardcoded in the field itself. Base .toggle-field (no modifier) stays
+       verbatim cm: label first, tight gap.
+       - toggle-field-narrow: switch first then label, tight gap - for
+         multiple toggles side by side in one row, switches align to the
+         left edge when stacked.
+       - toggle-field-wide: label first, switch pushed to the right edge -
+         for one toggle per row, switches align to the right edge when
+         stacked. */
+    .toggle-field-narrow {
+      flex-direction: row-reverse;
+    }
+    .toggle-field-wide {
+      justify-content: space-between;
+    }
+
     /* csc-specific: cm lays multiple fields per row out in a CSS grid, whose
        row/gap rules also supply spacing between rows. This card's editor is a
        flat single-column list instead, so .text-field/.toggle-field/.select-row
@@ -1086,20 +1113,21 @@ class ChronoSliderCardEditor extends LitElement {
         )}
       </div>
 
-      ${cscToggleField('Show name', c.show_name !== false, (e) => this._toggleChanged('show_name', e))}
-      ${cscToggleField('Show state', c.show_state !== false, (e) => this._toggleChanged('show_state', e))}
+      ${cscToggleField('Show name', c.show_name !== false, (e) => this._toggleChanged('show_name', e), 'toggle-field-wide')}
+      ${cscToggleField('Show state', c.show_state !== false, (e) => this._toggleChanged('show_state', e), 'toggle-field-wide')}
       ${cscToggleField('Show percentage', c.show_percentage !== false, (e) =>
-        this._toggleChanged('show_percentage', e)
+        this._toggleChanged('show_percentage', e), 'toggle-field-wide'
       )}
       ${cscToggleField('Show last changed', c.show_last_changed !== false, (e) =>
-        this._toggleChanged('show_last_changed', e)
+        this._toggleChanged('show_last_changed', e), 'toggle-field-wide'
       )}
       ${cscToggleField(
         'Show control switch buttons',
         c.show_control_switch_buttons === true,
-        (e) => this._toggleChanged('show_control_switch_buttons', e)
+        (e) => this._toggleChanged('show_control_switch_buttons', e),
+        'toggle-field-wide'
       )}
-      ${cscToggleField('Show favorites', c.show_favorites !== false, (e) => this._toggleChanged('show_favorites', e))}
+      ${cscToggleField('Show favorites', c.show_favorites !== false, (e) => this._toggleChanged('show_favorites', e), 'toggle-field-wide')}
       ${cscTextField(
         'Favorite positions (comma-separated %)',
         (c.favorite_positions ?? []).join(', '),
