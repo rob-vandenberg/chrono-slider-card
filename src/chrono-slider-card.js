@@ -73,11 +73,52 @@ import { LitElement, html, css } from 'https://unpkg.com/lit@2.0.0/index.js?modu
 import { styleMap }              from 'https://unpkg.com/lit@2.0.0/directives/style-map.js?module';
 import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/class-map.js?module';
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
+import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.29';
+const CARD_VERSION = '1.1.30';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.30: Editor field helpers (cscTextField/CscTextfield, cscToggleField,
+//          cscSelectField/CscSelect) brought to true verbatim parity with
+//          chrono-markdown-card's cm-* equivalents, prefix swapped cm->csc only:
+//          - Added unsafeHTML(label) wrapping (was plain ${label}).
+//          - cscToggleField gained the extraClass parameter (unused today, kept
+//            for parity).
+//          - CSS wrapper classes renamed to match cm exactly, unprefixed:
+//            .csc-field -> .text-field, .csc-toggle-field -> .toggle-field.
+//            .text-field/.toggle-field CSS bodies now verbatim-identical to cm's
+//            (this also fixes .toggle-field label previously having no font
+//            styling at all, and .text-field gaining min-width:0, which fixes
+//            the Mode/Fill direction/Default control row overflowing its column
+//            in a CSS grid - grid items default to min-width:auto and won't
+//            shrink below content size without it).
+//          - Deliberate, confirmed exception to verbatim: CscSelect's restricted
+//            (list-only) combobox behaviour from v1.1.27 is KEPT, not reverted to
+//            CmSelect's freeform text-commit - this is an intentional forward
+//            fix, not a gap, and is slated to be ported back into
+//            chrono-markdown-card separately later.
+//          - cm's cmColorPicker/cmButtonPicker/cmTextArea were NOT ported -
+//            chrono-slider-card has no config fields of those types, so there
+//            would be no call site. [Assumption, unconfirmed - flagged for
+//            review.]
+//          - cm has no equivalent of the Mode/Fill direction/Default control
+//            grid row, so its wrapper class .select-row (renamed from
+//            .csc-select-row for naming consistency, not because cm has this
+//            class) and the flat-list inter-row spacing rule are csc-specific
+//            additions layered on top of the verbatim cm classes, since this
+//            editor is a single-column stacked list rather than cm's grid-of-
+//            rows layout.
+//          Also: .percentage gained letter-spacing:0.1px to match .last-changed
+//          exactly [default choice made without explicit confirmation - flagged
+//          for review]. .time-row wrapper removed entirely - .last-changed is now
+//          a direct <p> sibling of .state/.percentage inside .state-header,
+//          matching their structure exactly (its flex-centering was redundant,
+//          .state-header already centers its children). The 20px gap that used
+//          to be .time-row's margin-bottom is now margin-top on .controls
+//          instead, so it applies after whichever of state/percentage/
+//          last-changed is last visible (or none), instead of being hard-tied to
+//          last-changed specifically.
 // v1.1.29: Editor UI overhaul: Mode/Fill direction/Default control moved into a
 //          single grid row (1fr 1fr 1fr, cm grid technique) placed after Name and
 //          before all toggles. Toggle order changed to Show name -> Show state ->
@@ -512,8 +553,8 @@ function cscBuildUserStylesCss(stylesConfig) {
 
 function cscTextField(label, value, onChange, opts = {}) {
   return html`
-    <div class="csc-field">
-      <label>${label}</label>
+    <div class="text-field">
+      <label>${unsafeHTML(label)}</label>
       <chrono-csc-textfield
         .value=${String(value ?? '')}
         type=${opts.type ?? 'text'}
@@ -527,10 +568,10 @@ function cscTextField(label, value, onChange, opts = {}) {
   `;
 }
 
-function cscToggleField(label, checked, onChange) {
+function cscToggleField(label, checked, onChange, extraClass = '') {
   return html`
-    <div class="csc-toggle-field">
-      <label>${label}</label>
+    <div class="toggle-field ${extraClass}">
+      <label>${unsafeHTML(label)}</label>
       <ha-switch .checked=${checked} @change=${onChange}></ha-switch>
     </div>
   `;
@@ -538,8 +579,8 @@ function cscToggleField(label, checked, onChange) {
 
 function cscSelectField(label, value, options, onChange) {
   return html`
-    <div class="csc-field">
-      <label>${label}</label>
+    <div class="text-field">
+      <label>${unsafeHTML(label)}</label>
       <chrono-csc-select
         .value=${value ?? ''}
         .options=${options}
@@ -945,23 +986,51 @@ class ChronoSliderCardEditor extends LitElement {
   }
 
   static styles = css`
-    .csc-field {
-      margin-bottom: 16px;
+    /* Verbatim from chrono-markdown-card's .text-field / .toggle-field
+       (cm/CmSelect prefix -> csc/CscSelect only - see v1.1.30 history). */
+    .text-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
     }
-    .csc-field label {
-      display: block;
+    .text-field label {
       font-size: 12px;
       font-weight: 600;
       color: var(--secondary-text-color);
-      margin-bottom: 4px;
+      white-space: pre-line;
     }
-    .csc-toggle-field {
+    .toggle-field {
       display: flex;
+      flex-direction: row;
+      gap: 12px;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 16px;
     }
-    .csc-select-row {
+    .toggle-field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--secondary-text-color);
+    }
+
+    /* csc-specific: cm lays multiple fields per row out in a CSS grid, whose
+       row/gap rules also supply spacing between rows. This card's editor is a
+       flat single-column list instead, so .text-field/.toggle-field/.select-row
+       carry no margin of their own (kept verbatim) - this generic rule supplies
+       the equivalent spacing between consecutive top-level field rows. */
+    .text-field + .text-field,
+    .text-field + .toggle-field,
+    .text-field + .select-row,
+    .toggle-field + .text-field,
+    .toggle-field + .toggle-field,
+    .toggle-field + .select-row,
+    .select-row + .text-field,
+    .select-row + .toggle-field {
+      margin-top: 16px;
+    }
+
+    /* csc-specific: no cm equivalent - the Mode/Fill direction/Default control
+       row, using cm's own grid-row technique. */
+    .select-row {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap: 8px;
@@ -974,7 +1043,7 @@ class ChronoSliderCardEditor extends LitElement {
     const c = this._config;
 
     return html`
-      <div class="csc-field">
+      <div class="text-field">
         <label>Entity</label>
         <ha-selector
           .hass=${this.hass}
@@ -986,7 +1055,7 @@ class ChronoSliderCardEditor extends LitElement {
 
       ${cscTextField('Name (optional)', c.name, (e) => this._valueChanged('name', e))}
 
-      <div class="csc-select-row">
+      <div class="select-row">
         ${cscSelectField(
           'Mode',
           c.mode ?? 'cover',
@@ -1326,13 +1395,7 @@ class ChronoSliderCard extends LitElement {
         <div class="state-header">
           ${this._showState ? html`<p class="state">${stateWord}</p>` : ''}
           ${this._showPercentage ? html`<p class="percentage">${value}%</p>` : ''}
-          ${this._showLastChanged
-            ? html`
-                <div class="time-row">
-                  <p class="last-changed">${this._relativeTime ?? ''}</p>
-                </div>
-              `
-            : ''}
+          ${this._showLastChanged ? html`<p class="last-changed">${this._relativeTime ?? ''}</p>` : ''}
         </div>
 
         <div class="controls">
@@ -1488,14 +1551,8 @@ class ChronoSliderCard extends LitElement {
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
       line-height: var(--ha-line-height-normal, 1.5);
+      letter-spacing: 0.1px;
       padding: var(--ha-space-1, 4px) 0;
-    }
-    .time-row {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: var(--ha-space-5, 20px);
     }
     .last-changed {
       font-style: normal;
@@ -1514,6 +1571,7 @@ class ChronoSliderCard extends LitElement {
       justify-content: center;
       flex: 1;
       width: 100%;
+      margin-top: var(--ha-space-5, 20px);
     }
     .controls:not(:last-child) {
       margin-bottom: var(--ha-space-6, 24px);
