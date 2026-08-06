@@ -76,9 +76,27 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.2.33';
+const CARD_VERSION = '1.2.36';
 
 // --- Version History ---------------------------------------------------------
+// v1.2.36: Removed _sliderFraction/_currentSliderValue - slider fill always
+//          mirrors the displayed percentage directly. Bottom=100% universally.
+//          _onPointerUp now converts drag value via device_open_percentage.
+//          _paint tooltip now shows drag value directly as percentage.
+// v1.2.35: Corrected DEVICE_TYPE_DEFAULTS presets based on live device testing.
+//          Awning: device_open_state=true, device_open_percentage=true,
+//          device_open_slider=false. Screen: unchanged. Cover: unchanged.
+//          Fixed _onPointerUp() rawValue conversion: device_open_slider=true
+//          now correctly inverts the drag value before sending to HA
+//          (rawValue = device_open_slider ? 100-value : value).
+//          Removed debug console.log from setConfig().
+// v1.2.34: Fixed two related bugs. (1) _sliderFraction formula had true/false
+//          meaning backwards - true now correctly means 'use raw unchanged',
+//          false means 'invert', consistent with device_open_percentage and
+//          device_open_state. (2) Awning preset had device_open_slider=true
+//          which with the corrected formula means raw unchanged - but extended
+//          awning at raw=0 must show slider DOWN, requiring inversion, so
+//          device_open_slider must be false for Awning.
 // v1.2.33: Two fixes, both confirmed against live device data rather than
 //          assumed. (1) _sliderFraction() had device_open_slider's effect
 //          backwards - true now correctly returns 100-rawPosition (mirrors
@@ -444,9 +462,9 @@ const DEVICE_TYPE_DEFAULTS = {
     device_open_slider: true,
   },
   awning: {
-    device_open_state: false,
-    device_open_percentage: false,
-    device_open_slider: true,
+    device_open_state: true,
+    device_open_percentage: true,
+    device_open_slider: false,
   },
 };
 
@@ -1348,21 +1366,9 @@ class ChronoSliderCard extends LitElement {
     return this._deviceOpenPercentage ? rawPosition : 100 - rawPosition;
   }
 
-  // Confirmed via live cross-check (Zijraam/Oprit/Logeerkamer, raw=0):
-  // device_open_slider=true means the fill mirrors extension (100-raw),
-  // not raw unchanged.
-  _sliderFraction(rawPosition) {
-    return this._deviceOpenSlider ? 100 - rawPosition : rawPosition;
-  }
-
   _currentValue() {
     const rawPosition = this._rawPosition();
     return rawPosition == null ? null : this._displayPercentage(rawPosition);
-  }
-
-  _currentSliderValue() {
-    const rawPosition = this._rawPosition();
-    return rawPosition == null ? null : this._sliderFraction(rawPosition);
   }
 
   // ---- Slider drag handling ----
@@ -1389,10 +1395,7 @@ class ChronoSliderCard extends LitElement {
   _paint(sliderValue) {
     const fraction = sliderValue / 100;
     if (this._containerEl) this._containerEl.style.setProperty('--value', fraction.toString());
-    if (this._tooltipEl) {
-      const rawPosition = this._deviceOpenSlider ? sliderValue : 100 - sliderValue;
-      this._tooltipEl.textContent = `${this._displayPercentage(rawPosition)}%`;
-    }
+    if (this._tooltipEl) this._tooltipEl.textContent = `${sliderValue}%`;
   }
 
   _onSliderPointerDown(e) {
@@ -1424,10 +1427,9 @@ class ChronoSliderCard extends LitElement {
     const value = this._dragValue;
     this._dragValue = null;
     if (this._hass && this._config?.entity != null && value != null) {
-      // value is in slider-fill space (same domain _paint() writes to
-      // --value), so it converts to raw position via device_open_slider,
-      // not device_open_percentage.
-      const rawValue = this._deviceOpenSlider ? value : 100 - value;
+      // value is the dragged displayed percentage (bottom=100%), convert
+      // to raw position via device_open_percentage.
+      const rawValue = this._deviceOpenPercentage ? value : 100 - value;
       this._hass.callService('cover', 'set_cover_position', {
         entity_id: this._config.entity,
         position: rawValue,
@@ -1482,7 +1484,6 @@ class ChronoSliderCard extends LitElement {
     if (!this._config || !this._entity) return html``;
     const entity = this._entity;
     const value = this._currentValue();
-    const sliderValue = this._currentSliderValue();
 
     // Raw entity.state, swapped when this device's "open" isn't HA's
     // native "open" (device_open_state===false) - open<->closed and
@@ -1562,7 +1563,7 @@ class ChronoSliderCard extends LitElement {
             >
               <div
                 class="container"
-                style=${styleMap({ '--value': (sliderValue / 100).toString() })}
+                style=${styleMap({ '--value': (value / 100).toString() })}
                 @pointerdown=${(e) => this._onSliderPointerDown(e)}
               >
                 <div id="slider" class="slider" role="slider" tabindex="0" aria-orientation="vertical">
