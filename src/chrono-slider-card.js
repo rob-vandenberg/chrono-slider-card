@@ -75,9 +75,20 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.24';
+const CARD_VERSION = '1.1.25';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.25: The v1.1.24 centering fix (text-align:center on .state-header,
+//          display:inline-block on its children) was verified incorrect -
+//          reproduced in isolation that text-align never shifts oversized
+//          content into negative offset, it stays flush to the start edge
+//          with all overflow on one side, regardless of the child's
+//          display value. Replaced with the same mechanism <ha-card>
+//          itself already uses successfully one level up: .state-header is
+//          now display:flex; flex-direction:column; align-items:center,
+//          confirmed via isolated reproduction to center oversized content
+//          with symmetric overflow. display:inline-block removed from
+//          .state/.percentage/.last-changed - unnecessary as flex items.
 // v1.1.24: (1) Fixed .state/.last-changed text not actually centering when
 //          content is wider than the card - verified via isolated
 //          reproduction that text-align:center on a fixed-width block does
@@ -1116,20 +1127,20 @@ class ChronoSliderCard extends LitElement {
     /* ---- State + relative-time label ---- */
     .state-header {
       width: 100%;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .state-header p {
       margin: 0;
     }
     .state-header .state {
-      display: inline-block;
       font-style: normal;
       font-weight: var(--ha-font-weight-normal, 400);
       font-size: 32px;
       line-height: var(--ha-line-height-condensed, 1.2);
     }
     .state-header .percentage {
-      display: inline-block;
       font-style: normal;
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
@@ -1143,7 +1154,6 @@ class ChronoSliderCard extends LitElement {
       margin-bottom: var(--ha-space-5, 20px);
     }
     .state-header .last-changed {
-      display: inline-block;
       font-style: normal;
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
