@@ -75,9 +75,24 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.27';
+const CARD_VERSION = '1.1.28';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.28: Specificity audit of the built-in stylesheet, so the styles:
+//          mechanism's flat single-class injected rules (see v1.1.23) reliably
+//          win via source order alone, without a specificity mismatch against
+//          the built-in rules. Flattened compound descendant selectors down to
+//          their single (already-unique) class wherever the parent qualifier
+//          was not needed for disambiguation: .state-header .state -> .state,
+//          .state-header .percentage -> .percentage, .state-header .time-row
+//          -> .time-row, .state-header .last-changed -> .last-changed,
+//          .favorite-button .button-inner -> .button-inner, .favorite-button
+//          .button-inner::before -> .button-inner::before, .favorite-button
+//          .button-label -> .button-label. Deliberately NOT flattened:
+//          .pressed .slider-track-bar and .favorite-button.active
+//          .button-inner::before - these are interaction-state modifiers, not
+//          identity qualifiers, and need to stay more specific than their base
+//          rules.
 // v1.1.27: Brought csc-* editor field helpers to parity with chrono-markdown-card's
 //          cm-* equivalents. cscTextField/CscTextfield now forward type/step/min/max
 //          (matching cmTextField/CmTextfield); CscTextfield input dimensions matched
@@ -1440,26 +1455,26 @@ class ChronoSliderCard extends LitElement {
       margin: 0;
       text-align: center;
     }
-    .state-header .state {
+    .state {
       font-style: normal;
       font-weight: var(--ha-font-weight-normal, 400);
       font-size: 32px;
       line-height: var(--ha-line-height-condensed, 1.2);
     }
-    .state-header .percentage {
+    .percentage {
       font-style: normal;
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
       line-height: var(--ha-line-height-normal, 1.5);
     }
-    .state-header .time-row {
+    .time-row {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: var(--ha-space-5, 20px);
     }
-    .state-header .last-changed {
+    .last-changed {
       font-style: normal;
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
@@ -1767,7 +1782,7 @@ class ChronoSliderCard extends LitElement {
       -webkit-tap-highlight-color: transparent;
       cursor: pointer;
     }
-    .favorite-button .button-inner {
+    .button-inner {
       overflow: hidden;
       position: relative;
       display: flex;
@@ -1791,7 +1806,7 @@ class ChronoSliderCard extends LitElement {
       color: inherit;
       transition: box-shadow 180ms ease-in-out, color 180ms ease-in-out;
     }
-    .favorite-button .button-inner::before {
+    .button-inner::before {
       content: '';
       position: absolute;
       top: 0;
@@ -1803,7 +1818,7 @@ class ChronoSliderCard extends LitElement {
       opacity: 0.2;
       pointer-events: none;
     }
-    .favorite-button .button-label {
+    .button-label {
       position: relative;
       z-index: 1;
       opacity: 0.95;
