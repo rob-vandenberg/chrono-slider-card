@@ -76,9 +76,37 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.2.38';
+const CARD_VERSION = '1.3.39';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.39: Removed invert_position entirely (setConfig() assignment and its
+//          use in _rawPosition()) - was introduced unilaterally in a prior
+//          session without being agreed as a design decision; per-entity
+//          raw-axis quirks are no longer special-cased. Corrected
+//          DEVICE_TYPE_DEFAULTS: awning device_open_percentage true->false,
+//          screen device_open_slider true->false - both derived from the
+//          device's own open/closed definition (percentage and slider fill
+//          both track extension amount, inverted from raw HA position, for
+//          every device type except native "cover"). Restored
+//          device_open_slider to actually drive the visual slider fill:
+//          added _sliderFraction()/_currentSliderValue(), independent from
+//          _displayPercentage()/_currentValue() - both are now separate,
+//          single-step conversions from the same raw position, not one
+//          derived from the other. render()'s --value binding now uses
+//          _currentSliderValue() instead of the displayed percentage.
+//          _paint()'s drag tooltip and _onPointerUp()'s HA service call now
+//          correctly convert dragged slider-fill-space value -> raw
+//          position (via device_open_slider) -> displayed percentage (via
+//          device_open_percentage, tooltip only) instead of treating
+//          slider-space and percentage-space as identical. Fixed
+//          _callDirectional()'s disabled check and render()'s
+//          openDisabled/closeDisabled to key off the human-facing action
+//          (ourAction) instead of the derived raw HA verb -
+//          cscCanOpenCover/cscCanCloseCover already translate via
+//          device_open_state internally, so branching on the raw verb
+//          asked the wrong question. Removed the now-unused
+//          rawOpenAction/rawCloseAction locals in render() that this bug
+//          depended on.
 // v1.2.36: Removed _sliderFraction/_currentSliderValue - slider fill always
 //          mirrors the displayed percentage directly. Bottom=100% universally.
 //          _onPointerUp now converts drag value via device_open_percentage.
@@ -459,11 +487,11 @@ const DEVICE_TYPE_DEFAULTS = {
   screen: {
     device_open_state: true,
     device_open_percentage: false,
-    device_open_slider: true,
+    device_open_slider: false,
   },
   awning: {
     device_open_state: true,
-    device_open_percentage: true,
+    device_open_percentage: false,
     device_open_slider: false,
   },
 };
@@ -1250,13 +1278,6 @@ class ChronoSliderCard extends LitElement {
     this._deviceOpenSlider =
       config.device_open_slider !== undefined ? config.device_open_slider === true : devicePreset.device_open_slider;
 
-    // Raw-YAML-only escape hatch, same hidden pattern as the 3 booleans
-    // above, but NOT part of any device_type preset - some individual
-    // entities report current_position on the opposite raw axis from
-    // every other cover (confirmed live for cover.terras_luifel_relais).
-    // Default false (no inversion) for every device_type.
-    this._invertPosition = config.invert_position === true;
-
     // Standalone settings - independent of device_type entirely.
     this._showName = config.show_name !== undefined ? config.show_name === true : DEFAULT_SHOW_NAME;
     this._showState = config.show_state !== undefined ? config.show_state === true : DEFAULT_SHOW_STATE;
@@ -1359,7 +1380,7 @@ class ChronoSliderCard extends LitElement {
         : this._entity.state === 'open'
         ? 100
         : 0;
-    return this._invertPosition ? 100 - raw : raw;
+    return raw;
   }
 
   _displayPercentage(rawPosition) {
@@ -1369,6 +1390,19 @@ class ChronoSliderCard extends LitElement {
   _currentValue() {
     const rawPosition = this._rawPosition();
     return rawPosition == null ? null : this._displayPercentage(rawPosition);
+  }
+
+  // Slider-fill-space is a separate, independently-derived view of the
+  // same raw position - see device_open_slider. Self-inverse formula
+  // (identical shape both directions: raw->slider and slider->raw),
+  // so this same function is reused in both directions below.
+  _sliderFraction(rawPosition) {
+    return this._deviceOpenSlider ? rawPosition : 100 - rawPosition;
+  }
+
+  _currentSliderValue() {
+    const rawPosition = this._rawPosition();
+    return rawPosition == null ? null : this._sliderFraction(rawPosition);
   }
 
   // ---- Slider drag handling ----
@@ -1395,7 +1429,13 @@ class ChronoSliderCard extends LitElement {
   _paint(sliderValue) {
     const fraction = sliderValue / 100;
     if (this._containerEl) this._containerEl.style.setProperty('--value', fraction.toString());
-    if (this._tooltipEl) this._tooltipEl.textContent = `${sliderValue}%`;
+    if (this._tooltipEl) {
+      // sliderValue is in slider-fill-space; convert to raw position via
+      // device_open_slider, then to the displayed percentage via
+      // device_open_percentage - two independent, single-step conversions.
+      const rawPosition = this._sliderFraction(sliderValue);
+      this._tooltipEl.textContent = `${this._displayPercentage(rawPosition)}%`;
+    }
   }
 
   _onSliderPointerDown(e) {
@@ -1427,9 +1467,9 @@ class ChronoSliderCard extends LitElement {
     const value = this._dragValue;
     this._dragValue = null;
     if (this._hass && this._config?.entity != null && value != null) {
-      // value is the dragged displayed percentage (bottom=100%), convert
-      // to raw position via device_open_percentage.
-      const rawValue = this._deviceOpenPercentage ? value : 100 - value;
+      // value is the slider-fill-space position the user dragged to;
+      // convert to raw HA current_position via device_open_slider.
+      const rawValue = this._sliderFraction(value);
       this._hass.callService('cover', 'set_cover_position', {
         entity_id: this._config.entity,
         position: rawValue,
@@ -1455,7 +1495,7 @@ class ChronoSliderCard extends LitElement {
     if (!this._hass || !this._entity) return;
     const rawAction = this._deviceOpenState ? ourAction : ourAction === 'open' ? 'close' : 'open';
     const disabled =
-      rawAction === 'open'
+      ourAction === 'open'
         ? !cscCanOpenCover(this._entity, this._deviceOpenState)
         : !cscCanCloseCover(this._entity, this._deviceOpenState);
     if (disabled) return;
@@ -1484,6 +1524,7 @@ class ChronoSliderCard extends LitElement {
     if (!this._config || !this._entity) return html``;
     const entity = this._entity;
     const value = this._currentValue();
+    const sliderValue = this._currentSliderValue();
 
     // Raw entity.state, swapped when this device's "open" isn't HA's
     // native "open" (device_open_state===false) - open<->closed and
@@ -1517,16 +1558,8 @@ class ChronoSliderCard extends LitElement {
     const openColor = cscStateColorCssCover(entity.state, deviceClass, 'open');
     const color = cscStateColorCssCover(effectiveState, deviceClass);
 
-    const rawOpenAction = this._deviceOpenState ? 'open' : 'close';
-    const rawCloseAction = this._deviceOpenState ? 'close' : 'open';
-    const openDisabled =
-      rawOpenAction === 'open'
-        ? !cscCanOpenCover(entity, this._deviceOpenState)
-        : !cscCanCloseCover(entity, this._deviceOpenState);
-    const closeDisabled =
-      rawCloseAction === 'open'
-        ? !cscCanOpenCover(entity, this._deviceOpenState)
-        : !cscCanCloseCover(entity, this._deviceOpenState);
+    const openDisabled = !cscCanOpenCover(entity, this._deviceOpenState);
+    const closeDisabled = !cscCanCloseCover(entity, this._deviceOpenState);
     const stopDisabled = !cscCanStopCover(entity);
 
     // Icon glyph matches whichever raw action actually fires when that
@@ -1563,7 +1596,7 @@ class ChronoSliderCard extends LitElement {
             >
               <div
                 class="container"
-                style=${styleMap({ '--value': (value / 100).toString() })}
+                style=${styleMap({ '--value': (sliderValue / 100).toString() })}
                 @pointerdown=${(e) => this._onSliderPointerDown(e)}
               >
                 <div id="slider" class="slider" role="slider" tabindex="0" aria-orientation="vertical">
