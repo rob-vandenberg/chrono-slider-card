@@ -75,9 +75,23 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.0.21';
+const CARD_VERSION = '1.0.22';
 
 // --- Version History ---------------------------------------------------------
+// v1.0.22: Fixed two issues found via a console-measured element-rect dump
+//          comparing against vertical-slider-card side-by-side: (1)
+//          .state-header (the "Closed" / relative-time block) was
+//          shrink-wrapping to its own text width instead of filling the
+//          card - <ha-card>'s align-items: center gives flex children no
+//          width unless told otherwise, and .state-header was missed when
+//          that override was added to .controls/.favorites-groups/
+//          .card-title; added width: 100% to .state-header. (2) Reverted
+//          the v1.0.21 favorite-button margin bump (12px) back to the
+//          original 8px - the "buttons touching the slider" problem that
+//          bump was meant to fix was actually already solved by
+//          restoring .controls:not(:last-child)'s margin-bottom in the
+//          same v1.0.21 release, so the margin increase was unnecessary
+//          and only made single-column gaps look oversized.
 // v1.0.21: Fixed four rendering discrepancies found by comparing against
 //          vertical-slider-card side-by-side on a real dashboard: (1)
 //          slider/track color was falling back to generic theme colors
@@ -1014,6 +1028,9 @@ class ChronoSliderCard extends LitElement {
     }
 
     /* ---- State + relative-time label ---- */
+    .state-header {
+      width: 100%;
+    }
     .state-header p {
       text-align: center;
       margin: 0;
@@ -1321,13 +1338,13 @@ class ChronoSliderCard extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -12px;
+      margin: -8px;
       flex-wrap: wrap;
       max-width: 384px;
       user-select: none;
     }
     .favorites-container > * {
-      margin: 12px;
+      margin: 8px;
     }
     .favorite-button {
       display: block;
