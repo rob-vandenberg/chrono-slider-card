@@ -75,9 +75,26 @@ import { classMap }              from 'https://unpkg.com/lit@2.0.0/directives/cl
 import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/live.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.1.23';
+const CARD_VERSION = '1.1.24';
 
 // --- Version History ---------------------------------------------------------
+// v1.1.24: (1) Fixed .state/.last-changed text not actually centering when
+//          content is wider than the card - verified via isolated
+//          reproduction that text-align:center on a fixed-width block does
+//          not center oversized unbreakable content, it overflows entirely
+//          to one side. Fix: .state-header now centers via text-align, and
+//          its child lines (.state/.last-changed/.percentage) are
+//          display:inline-block so they shrink-wrap and get positioned by
+//          the parent instead of centering themselves. (2) Percentage
+//          moved out of the state text into its own always-present-when-
+//          enabled line (.percentage), no longer conditional on value
+//          extremes - fixes cross-card vertical misalignment caused by
+//          inconsistent state-text wrapping. New show_percentage config
+//          option (default true) controls it, mirroring the existing
+//          show_label pattern. (3) Renamed show_label -> show_last_changed
+//          (breaking - old key no longer recognized, falls back to
+//          default). (4) "Open" -> "Opened". (5) .state font-size
+//          36px -> 32px.
 // v1.1.23: Implemented the styles: YAML->CSS feature. config.styles is a flat
 //          object of { class_name: { property: value } } blocks - class_name
 //          uses underscores (matches devtools with dashes swapped for
@@ -253,7 +270,8 @@ const MODE_DEFAULTS = {
     fill_direction: 'retracts',
     default_control: 'slider',
     show_name: true,
-    show_label: true,
+    show_last_changed: true,
+    show_percentage: true,
     show_control_switch_buttons: false,
     show_favorites: true,
     favorite_positions: [0, 25, 75, 100],
@@ -262,7 +280,8 @@ const MODE_DEFAULTS = {
     fill_direction: 'extends',
     default_control: 'slider',
     show_name: true,
-    show_label: true,
+    show_last_changed: true,
+    show_percentage: true,
     show_control_switch_buttons: false,
     show_favorites: true,
     favorite_positions: [0, 25, 75, 100],
@@ -618,7 +637,12 @@ class ChronoSliderCardEditor extends LitElement {
 
       ${cscTextField('Name (optional)', c.name, (e) => this._valueChanged('name', e))}
       ${cscToggleField('Show name', c.show_name !== false, (e) => this._toggleChanged('show_name', e))}
-      ${cscToggleField('Show label', c.show_label !== false, (e) => this._toggleChanged('show_label', e))}
+      ${cscToggleField('Show last changed', c.show_last_changed !== false, (e) =>
+        this._toggleChanged('show_last_changed', e)
+      )}
+      ${cscToggleField('Show percentage', c.show_percentage !== false, (e) =>
+        this._toggleChanged('show_percentage', e)
+      )}
 
       ${cscSelectField(
         'Mode',
@@ -704,7 +728,10 @@ class ChronoSliderCard extends LitElement {
         : defaults.fill_direction;
 
     this._showName = config.show_name !== undefined ? config.show_name === true : defaults.show_name;
-    this._showLabel = config.show_label !== undefined ? config.show_label === true : defaults.show_label;
+    this._showLastChanged =
+      config.show_last_changed !== undefined ? config.show_last_changed === true : defaults.show_last_changed;
+    this._showPercentage =
+      config.show_percentage !== undefined ? config.show_percentage === true : defaults.show_percentage;
 
     this._favoritePositions = cscNormalizeFavoritePositions(
       Array.isArray(config.favorite_positions) && config.favorite_positions.length
@@ -903,7 +930,7 @@ class ChronoSliderCard extends LitElement {
     let stateWord = '';
     switch (entity.state) {
       case 'open':
-        stateWord = 'Open';
+        stateWord = 'Opened';
         break;
       case 'closed':
         stateWord = 'Closed';
@@ -917,10 +944,6 @@ class ChronoSliderCard extends LitElement {
       default:
         stateWord = entity.state;
     }
-    const active = cscStateActiveCover(entity.state);
-    const showPosition = active && value !== 100;
-    const stateText = showPosition ? `${stateWord} · ${value}%` : stateWord;
-
     const deviceClass = entity.attributes.device_class;
     const openColor = cscStateColorCssCover(entity.state, deviceClass, 'open');
     const color = cscStateColorCssCover(entity.state, deviceClass);
@@ -948,8 +971,9 @@ class ChronoSliderCard extends LitElement {
         ${this._showName ? html`<p class="card-title">${title}</p>` : ''}
 
         <div class="state-header">
-          <p class="state">${stateText}</p>
-          ${this._showLabel
+          <p class="state">${stateWord}</p>
+          ${this._showPercentage ? html`<p class="percentage">${value}%</p>` : ''}
+          ${this._showLastChanged
             ? html`
                 <div class="time-row">
                   <p class="last-changed">${this._relativeTime ?? ''}</p>
@@ -1092,16 +1116,24 @@ class ChronoSliderCard extends LitElement {
     /* ---- State + relative-time label ---- */
     .state-header {
       width: 100%;
+      text-align: center;
     }
     .state-header p {
-      text-align: center;
       margin: 0;
     }
     .state-header .state {
+      display: inline-block;
       font-style: normal;
       font-weight: var(--ha-font-weight-normal, 400);
-      font-size: 36px;
+      font-size: 32px;
       line-height: var(--ha-line-height-condensed, 1.2);
+    }
+    .state-header .percentage {
+      display: inline-block;
+      font-style: normal;
+      font-size: var(--ha-font-size-l, 16px);
+      font-weight: var(--ha-font-weight-medium, 500);
+      line-height: var(--ha-line-height-normal, 1.5);
     }
     .state-header .time-row {
       position: relative;
@@ -1111,6 +1143,7 @@ class ChronoSliderCard extends LitElement {
       margin-bottom: var(--ha-space-5, 20px);
     }
     .state-header .last-changed {
+      display: inline-block;
       font-style: normal;
       font-size: var(--ha-font-size-l, 16px);
       font-weight: var(--ha-font-weight-medium, 500);
