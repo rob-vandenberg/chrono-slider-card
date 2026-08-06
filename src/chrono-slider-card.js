@@ -76,9 +76,29 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.2.32';
+const CARD_VERSION = '1.2.33';
 
 // --- Version History ---------------------------------------------------------
+// v1.2.33: Two fixes, both confirmed against live device data rather than
+//          assumed. (1) _sliderFraction() had device_open_slider's effect
+//          backwards - true now correctly returns 100-rawPosition (mirrors
+//          extension) instead of rawPosition unchanged. Confirmed via 3
+//          independent live cases (Zijraam/Oprit/Logeerkamer, all raw=0
+//          pinned exactly via their 'closed' state word) where the slider
+//          rendered empty/handle-up for a fully-closed screen instead of
+//          full/handle-down. (2) Added invert_position, a 4th raw-YAML-only
+//          override (not part of any device_type preset, default false,
+//          same hidden/rare-escape-hatch pattern as the existing 3
+//          booleans) - applied once in _rawPosition(), before every
+//          existing (unchanged) formula runs. Needed because
+//          cover.terras_luifel_relais confirmed live to report
+//          current_position on the opposite raw axis from every other
+//          checked cover (100 while physically fully extended, not
+//          retracted) - a standalone device-level fact, not a card bug.
+//          Scope note: only current_position is inverted; entity.state
+//          (the raw open/closed/opening/closing word) is untouched by this
+//          key - if that also reads backwards for an inverted device, it
+//          is a separate, not-yet-implemented piece.
 // v1.2.32: Greenfield redesign of device-type/orientation handling (no back-compat -
 //          card not yet publicly released). Removed `mode`, `fill_direction`, and
 //          MODE_DEFAULTS entirely. Replaced with `device_type` (cover/screen/awning)
@@ -1212,6 +1232,13 @@ class ChronoSliderCard extends LitElement {
     this._deviceOpenSlider =
       config.device_open_slider !== undefined ? config.device_open_slider === true : devicePreset.device_open_slider;
 
+    // Raw-YAML-only escape hatch, same hidden pattern as the 3 booleans
+    // above, but NOT part of any device_type preset - some individual
+    // entities report current_position on the opposite raw axis from
+    // every other cover (confirmed live for cover.terras_luifel_relais).
+    // Default false (no inversion) for every device_type.
+    this._invertPosition = config.invert_position === true;
+
     // Standalone settings - independent of device_type entirely.
     this._showName = config.show_name !== undefined ? config.show_name === true : DEFAULT_SHOW_NAME;
     this._showState = config.show_state !== undefined ? config.show_state === true : DEFAULT_SHOW_STATE;
@@ -1308,19 +1335,24 @@ class ChronoSliderCard extends LitElement {
   // can disagree (that's exactly what distinguishes Cover from Screen).
   _rawPosition() {
     if (!this._entity) return null;
-    return this._entity.attributes.current_position != null
-      ? this._entity.attributes.current_position
-      : this._entity.state === 'open'
-      ? 100
-      : 0;
+    const raw =
+      this._entity.attributes.current_position != null
+        ? this._entity.attributes.current_position
+        : this._entity.state === 'open'
+        ? 100
+        : 0;
+    return this._invertPosition ? 100 - raw : raw;
   }
 
   _displayPercentage(rawPosition) {
     return this._deviceOpenPercentage ? rawPosition : 100 - rawPosition;
   }
 
+  // Confirmed via live cross-check (Zijraam/Oprit/Logeerkamer, raw=0):
+  // device_open_slider=true means the fill mirrors extension (100-raw),
+  // not raw unchanged.
   _sliderFraction(rawPosition) {
-    return this._deviceOpenSlider ? rawPosition : 100 - rawPosition;
+    return this._deviceOpenSlider ? 100 - rawPosition : rawPosition;
   }
 
   _currentValue() {
