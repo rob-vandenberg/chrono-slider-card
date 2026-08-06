@@ -76,7 +76,7 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.2.36';
+const CARD_VERSION = '1.2.37';
 
 // --- Version History ---------------------------------------------------------
 // v1.2.36: Removed _sliderFraction/_currentSliderValue - slider fill always
