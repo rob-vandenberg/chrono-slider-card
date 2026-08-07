@@ -76,9 +76,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.5.53';
+const CARD_VERSION = '1.5.54';
 
 // --- Version History ---------------------------------------------------------
+// v1.5.54: Fixed directional button icons - top button now always shows an
+//          up-pointing icon and bottom always down, unconditionally. Was
+//          incorrectly swapping icons based on device_open_state, which
+//          conflated "which icon is drawn" (a fixed, purely positional
+//          visual) with "which HA service a press calls" (correctly
+//          device_open_state-dependent, unchanged, still in
+//          _callDirectional's rawAction).
 // v1.5.53: Opened/Closed state text now switches OPEN_CLOSE_THRESHOLD raw
 //          position points before the exact closed extreme, not only at the
 //          exact extreme itself - a barely-cracked-open cover now reads as
@@ -1839,8 +1846,15 @@ class ChronoSliderCard extends LitElement {
     // button is pressed (computeOpenIcon/computeCloseIcon are glyph
     // shapes for the native-open/native-close motion, independent of
     // our labels).
-    const openIconPath = this._deviceOpenState ? cscComputeOpenIcon(entity) : cscComputeCloseIcon(entity);
-    const closeIconPath = this._deviceOpenState ? cscComputeCloseIcon(entity) : cscComputeOpenIcon(entity);
+    // Icon selection is purely positional - top button (control-btn-close)
+    // always shows cscComputeOpenIcon's icon (up, or the horizontal-expand
+    // variant for awning/door/gate/curtain), bottom button (control-btn-
+    // open) always shows cscComputeCloseIcon's icon (down/collapse). No
+    // device_open_state involvement here - the visuals never change.
+    // device_open_state only affects which HA service a press calls (see
+    // _callDirectional's rawAction), never which icon is drawn.
+    const closeIconPath = cscComputeOpenIcon(entity);
+    const openIconPath = cscComputeCloseIcon(entity);
 
     const title = this._showName
       ? cscExpandEscapedNewlines(this._config.name || entity.attributes.friendly_name || this._config.entity)
