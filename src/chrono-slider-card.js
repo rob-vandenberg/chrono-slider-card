@@ -76,9 +76,18 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.4.48';
+const CARD_VERSION = '1.4.49';
 
 // --- Version History ---------------------------------------------------------
+// v1.4.49: Fixed the Opened/Closed state text for partial positions. It was
+//          derived from a blind word-swap of entity.state (which is only
+//          ever 'open' or 'closed', so any partial position collapsed to
+//          whichever word HA's raw state happened to report - wrong
+//          whenever device_open_state===false). Now derived from
+//          current_position via the existing, already-correct
+//          cscIsFullyClosedCover() - the same device_open_state-aware
+//          function the open/close buttons already use. Not device-type
+//          specific - operates purely on the device_open_state boolean.
 // v1.4.48: Removed the card's internal favorite_positions fallback - it was
 //          a second, invisible source of truth that desynced from what the
 //          editor field showed. favorite_positions in config is now the
@@ -1699,27 +1708,30 @@ class ChronoSliderCard extends LitElement {
     // Raw entity.state, swapped when this device's "open" isn't HA's
     // native "open" (device_open_state===false) - open<->closed and
     // opening<->closing both swap, so the word stays internally
-    // consistent with itself mid-transition. Word text itself (below)
-    // is unchanged.
+    // consistent with itself mid-transition. Used below only for the
+    // state color (cscStateColorCssCover) - the Opened/Closed/Opening/
+    // Closing text itself is derived separately, from current_position,
+    // so it's correct for partial positions too (see stateWord below).
     const STATE_SWAP = { open: 'closed', closed: 'open', opening: 'closing', closing: 'opening' };
     const effectiveState = this._deviceOpenState ? entity.state : STATE_SWAP[entity.state] ?? entity.state;
 
+    // stateWord: Opening/Closing come from entity.state (no position
+    // equivalent for motion). Opened/Closed are derived from
+    // current_position via cscIsFullyClosedCover - the same,
+    // already-correct, device_open_state-aware function the open/close
+    // buttons use - rather than word-swapping entity.state, which is
+    // only ever 'open' or 'closed' (binary) and so can't distinguish a
+    // partial position from a fully open one. Anything else (e.g.
+    // unavailable, unknown) passes through unchanged.
     let stateWord = '';
-    switch (effectiveState) {
-      case 'open':
-        stateWord = 'Opened';
-        break;
-      case 'closed':
-        stateWord = 'Closed';
-        break;
-      case 'opening':
-        stateWord = 'Opening';
-        break;
-      case 'closing':
-        stateWord = 'Closing';
-        break;
-      default:
-        stateWord = effectiveState;
+    if (cscIsOpeningCover(entity, this._deviceOpenState)) {
+      stateWord = 'Opening';
+    } else if (cscIsClosingCover(entity, this._deviceOpenState)) {
+      stateWord = 'Closing';
+    } else if (entity.state === 'open' || entity.state === 'closed') {
+      stateWord = cscIsFullyClosedCover(entity, this._deviceOpenState) ? 'Closed' : 'Opened';
+    } else {
+      stateWord = entity.state;
     }
     const deviceClass = entity.attributes.device_class;
     // openColor intentionally stays keyed to the literal raw 'open'
