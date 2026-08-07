@@ -76,9 +76,19 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.5.54';
+const CARD_VERSION = '1.5.55';
 
 // --- Version History ---------------------------------------------------------
+// v1.5.55: Fixed directional buttons moving the wrong way. open_cover/
+//          close_cover are fixed platform-wide HA services (current_position
+//          is always 0=closed/100=open, verified against HA's own docs) -
+//          the button logic was incorrectly re-deriving which service to
+//          call from device_open_state, which is a display-only concept
+//          (state text/percentage/slider fill), not a service-call concept.
+//          Top button (open icon) now always calls open_cover/checks
+//          against raw 100; bottom (close icon) always calls close_cover/
+//          checks against raw 0 - unconditionally, matching the fixed
+//          icons from v1.5.54.
 // v1.5.54: Fixed directional button icons - top button now always shows an
 //          up-pointing icon and bottom always down, unconditionally. Was
 //          incorrectly swapping icons based on device_open_state, which
@@ -1751,12 +1761,19 @@ class ChronoSliderCard extends LitElement {
   }
 
   // ---- Control actions ----
+  // ourAction is purely positional: 'open' (top button) always calls
+  // open_cover and always targets raw position 100; 'close' (bottom
+  // button) always calls close_cover and always targets raw position 0.
+  // HA's open_cover/close_cover services are fixed platform-wide (a
+  // cover's current_position is always 0=closed/100=open, independent of
+  // device_class - verified against HA's own documentation), so
+  // device_open_state must never be consulted here - it's a display-only
+  // concern (state text, percentage, slider fill), never a button/
+  // service-call concern.
   _callDirectional(ourAction) {
     if (!this._hass || !this._entity) return;
-    const rawAction = this._deviceOpenState ? ourAction : ourAction === 'open' ? 'close' : 'open';
-    const openState = ourAction === 'open' ? this._deviceOpenState : !this._deviceOpenState;
-    if (!cscCanOpenCover(this._entity, openState)) return;
-    this._hass.callService('cover', `${rawAction}_cover`, { entity_id: this._config.entity });
+    if (!cscCanOpenCover(this._entity, ourAction === 'open')) return;
+    this._hass.callService('cover', `${ourAction}_cover`, { entity_id: this._config.entity });
   }
 
   _stopCover() {
@@ -1838,8 +1855,8 @@ class ChronoSliderCard extends LitElement {
       `.control-slider-host { --state-cover-inactive-color: ${openColor}; --slider-color: ${color}; --slider-background: ${color}; }`
     );
 
-    const openDisabled = !cscCanOpenCover(entity, this._deviceOpenState);
-    const closeDisabled = !cscCanOpenCover(entity, !this._deviceOpenState);
+    const openDisabled = !cscCanOpenCover(entity, true);
+    const closeDisabled = !cscCanOpenCover(entity, false);
     const stopDisabled = entity.state === UNAVAILABLE;
 
     // Icon glyph matches whichever raw action actually fires when that
