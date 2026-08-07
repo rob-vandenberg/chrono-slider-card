@@ -76,9 +76,25 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.43';
+const CARD_VERSION = '1.3.44';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.44: No hardcoded literal belongs inside a method body - moved the
+//          last four still sitting there into the Constants section,
+//          placed where a reader would actually look rather than
+//          appended at the end: RELATIVE_TIME_REFRESH_INTERVAL_MS
+//          (getCardSize()'s return 6 -> CARD_SIZE_HINT,
+//          getGridOptions()'s columns:4/min_columns:3 ->
+//          GRID_COLUMNS_DEFAULT/GRID_MIN_COLUMNS_DEFAULT) grouped with
+//          the card-sizing concern they share; connectedCallback()'s
+//          setInterval(...,30000) -> RELATIVE_TIME_REFRESH_INTERVAL_MS
+//          grouped with the other fixed internal constants (UNAVAILABLE,
+//          HANDLE_MARGIN_PX/HANDLE_SIZE_PX), not the config-default
+//          block, since it isn't tied to any config option. Scope
+//          deliberately limited to these four JS-level literals; CSS-side
+//          defaults inside static styles (--slider-thickness: 130px and
+//          similar) are already named via their own custom properties
+//          and were left untouched.
 // v1.3.43: Corrected v1.3.42: --state-cover-inactive-color was removed as
 //          "dead" based on a literal-text search for
 //          var(--state-cover-inactive-color) in the file, which never
@@ -561,6 +577,10 @@ console.info(
 // --- Constants -----------------------------------------------------------------
 const UNAVAILABLE = 'unavailable';
 
+// How often the relative-time label ("3 hours ago") re-renders itself -
+// see connectedCallback(). Not tied to any config option.
+const RELATIVE_TIME_REFRESH_INTERVAL_MS = 30000;
+
 // These must match the CSS custom properties in static styles below:
 // --slider-thickness: 130px, --handle-margin: thickness/8, --handle-size: 4px
 const HANDLE_MARGIN_PX = 130 / 8;
@@ -604,6 +624,13 @@ const DEFAULT_SHOW_CONTROL_SWITCH_BUTTONS = false;
 const DEFAULT_SHOW_FAVORITES = true;
 const DEFAULT_CONTROL = 'slider';
 const DEFAULT_FAVORITE_POSITIONS = [0, 25, 75, 100];
+
+// Card sizing within the dashboard view - see getCardSize()/
+// getGridOptions(). Not currently exposed as config options (no YAML
+// key reads these yet), unlike the DEFAULT_* values above.
+const CARD_SIZE_HINT = 6;
+const GRID_COLUMNS_DEFAULT = 4;
+const GRID_MIN_COLUMNS_DEFAULT = 3;
 
 // --- Generic csc-prefixed helper functions (pure, DOM-free) --------------------
 // Ported near-verbatim from vertical-slider-card - no dependency on the
@@ -1448,7 +1475,7 @@ class ChronoSliderCard extends LitElement {
   }
 
   getCardSize() {
-    return 6;
+    return CARD_SIZE_HINT;
   }
 
   // Declares this card's default/min/max size in the sections view's
@@ -1459,8 +1486,8 @@ class ChronoSliderCard extends LitElement {
   // its section.
   getGridOptions() {
     return {
-      columns: 4,
-      min_columns: 3,
+      columns: GRID_COLUMNS_DEFAULT,
+      min_columns: GRID_MIN_COLUMNS_DEFAULT,
     };
   }
 
@@ -1470,7 +1497,7 @@ class ChronoSliderCard extends LitElement {
       if (this._entity && !this._dragging) {
         this._relativeTime = cscRelativeTimeText(this._entity.last_changed);
       }
-    }, 30000);
+    }, RELATIVE_TIME_REFRESH_INTERVAL_MS);
   }
 
   disconnectedCallback() {
