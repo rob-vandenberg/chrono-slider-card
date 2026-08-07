@@ -76,9 +76,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.4.47';
+const CARD_VERSION = '1.4.48';
 
 // --- Version History ---------------------------------------------------------
+// v1.4.48: Removed the card's internal favorite_positions fallback - it was
+//          a second, invisible source of truth that desynced from what the
+//          editor field showed. favorite_positions in config is now the
+//          only place favorite buttons are defined; empty/absent means zero
+//          buttons. DEFAULT_FAVORITE_POSITIONS is now only used once, by
+//          getStubConfig(), to seed a brand-new card's config with
+//          0,25,75,100 so the editor field starts pre-filled with real data.
 // v1.4.47: Title is now centered by default (text-align: center on .title).
 // v1.4.46: Renamed the title element's classname from card-title to title.
 // v1.3.45: Removed the getGridOptions() default columns value (and
@@ -1396,6 +1403,7 @@ class ChronoSliderCard extends LitElement {
     return {
       type: 'custom:chrono-slider-card',
       entity: firstCover || '',
+      favorite_positions: DEFAULT_FAVORITE_POSITIONS,
     };
   }
 
@@ -1434,11 +1442,7 @@ class ChronoSliderCard extends LitElement {
     this._showPercentage =
       config.show_percentage !== undefined ? config.show_percentage === true : DEFAULT_SHOW_PERCENTAGE;
 
-    this._favoritePositions = cscNormalizeFavoritePositions(
-      Array.isArray(config.favorite_positions) && config.favorite_positions.length
-        ? config.favorite_positions
-        : DEFAULT_FAVORITE_POSITIONS
-    );
+    this._favoritePositions = cscNormalizeFavoritePositions(config.favorite_positions);
 
     this._showControlSwitchButtons =
       config.show_control_switch_buttons !== undefined
