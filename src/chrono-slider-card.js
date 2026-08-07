@@ -76,9 +76,44 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.40';
+const CARD_VERSION = '1.3.41';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.41: styles: config feature was fixed at its actual cause instead of
+//          worked around: user CSS was being injected as an inline <style>
+//          element, which per the platform's default styleOrder ("inner
+//          adopted") always loses cascade ties against adoptedStyleSheets
+//          (verified against the CSSWG spec discussion, not assumed) -
+//          meaning it could never override any property already declared
+//          by this component's own static styles on the same element,
+//          regardless of DOM/template order. The v1.1.28 changelog's claim
+//          that a specificity audit made this "reliably win via source
+//          order alone" was therefore never actually true. Fixed by
+//          building the user CSS into a constructed CSSStyleSheet (owned
+//          for the component's lifetime, updated in place via
+//          replaceSync() on every setConfig()) and appending it to
+//          renderRoot.adoptedStyleSheets after Lit's own static-style
+//          sheets in firstUpdated() - same mechanism, same category,
+//          appended after, so it now wins ties by platform design rather
+//          than by accident. Inline <style> tag removed from the render
+//          template. DOM/naming audit of the card (not the editor) per
+//          the project's DOM-minimalism and naming rules: renamed
+//          .container -> .slider-container (former name gave no
+//          indication of purpose or scope). Removed the show-handle
+//          modifier on .slider-track-bar - it was hardcoded permanently
+//          present in the template with no conditional ever toggling it
+//          off, making the unmodified .slider-track-bar rule's own
+//          --slider-size dead code; merged the two into one rule.
+//          Flattened .favorites-groups/.favorites-group/.favorites-
+//          container (three nested wrapper levels for what only ever
+//          renders as one group) into a single .favorites element with
+//          the exact same effective layout. .slider-track-background
+//          examined and deliberately left as its own element - collapsing
+//          it onto .slider would require switching from the opacity
+//          property to an alpha-blended background color, since opacity
+//          cascades to children and would incorrectly dim the fill bar
+//          too; a real behavior change, not a free simplification, so
+//          left untouched per instruction.
 // v1.3.40: Corrected DEVICE_TYPE_DEFAULTS.awning.device_open_state true->false.
 //          Awning's "open" is fully extended (raw position 0), so the "Open"
 //          word must show at raw 0, not raw 100 - true was the leftover
@@ -1250,6 +1285,15 @@ class ChronoSliderCard extends LitElement {
     _toggleMode: { state: true },
   };
 
+  constructor() {
+    super();
+    // Constructed once and mutated in place via replaceSync() in
+    // setConfig() - never replaced, so a single adoptedStyleSheets push
+    // in firstUpdated() stays valid for the component's lifetime, and
+    // config-editor live-edits just update this same sheet's content.
+    this._userStyleSheet = new CSSStyleSheet();
+  }
+
   static getStubConfig(hass) {
     const entities = hass && hass.states ? Object.keys(hass.states) : [];
     const firstCover = entities.find((id) => id.startsWith('cover.'));
@@ -1320,7 +1364,16 @@ class ChronoSliderCard extends LitElement {
       console.warn('chrono-slider-card: "styles" must be an object, ignoring.');
       stylesConfig = {};
     }
-    this._userStylesCss = cscBuildUserStylesCss(stylesConfig || {});
+    // Written into the adoptedStyleSheets-based sheet (see constructor/
+    // firstUpdated), not injected as an inline <style> element - inline
+    // <style> tags always lose cascade ties against adoptedStyleSheets
+    // (platform default styleOrder is "inner adopted": adopted sheets are
+    // evaluated after, and so win over, inline style elements regardless
+    // of DOM position), which made the styles: feature unable to override
+    // any property this component's own static styles already declared
+    // on the same element. Adopting our sheet the same way, after Lit's
+    // own static-style sheets, fixes that at the cause.
+    this._userStyleSheet.replaceSync(cscBuildUserStylesCss(stylesConfig || {}));
   }
 
   set hass(hass) {
@@ -1370,9 +1423,14 @@ class ChronoSliderCard extends LitElement {
   }
 
   firstUpdated() {
-    this._containerEl = this.renderRoot.querySelector('.container');
+    this._containerEl = this.renderRoot.querySelector('.slider-container');
     this._sliderEl = this.renderRoot.querySelector('#slider');
     this._tooltipEl = this.renderRoot.querySelector('.tooltip');
+    // Appended after Lit's own static-style sheets (already present in
+    // adoptedStyleSheets by this point) so it wins cascade ties against
+    // them, on any property, not just ones the built-in styles leave
+    // undeclared.
+    this.renderRoot.adoptedStyleSheets = [...this.renderRoot.adoptedStyleSheets, this._userStyleSheet];
   }
 
   // Raw HA current_position (0-100, verified platform-wide: 100 = fully
@@ -1583,7 +1641,6 @@ class ChronoSliderCard extends LitElement {
 
     return html`
       <ha-card class="ha-card">
-        <style>${this._userStylesCss}</style>
         ${this._showName ? html`<p class="card-title">${title}</p>` : ''}
 
         <div class="state-header">
@@ -1603,13 +1660,13 @@ class ChronoSliderCard extends LitElement {
               })}
             >
               <div
-                class="container"
+                class="slider-container"
                 style=${styleMap({ '--value': (sliderValue / 100).toString() })}
                 @pointerdown=${(e) => this._onSliderPointerDown(e)}
               >
                 <div id="slider" class="slider" role="slider" tabindex="0" aria-orientation="vertical">
                   <div class="slider-track-background"></div>
-                  <div class="slider-track-bar show-handle"></div>
+                  <div class="slider-track-bar"></div>
                 </div>
                 <span class="tooltip"></span>
               </div>
@@ -1670,26 +1727,22 @@ class ChronoSliderCard extends LitElement {
 
         ${this._showFavorites
           ? html`
-              <div class="favorites-groups">
-                <div class="favorites-group">
-                  <section class="favorites-container">
-                    ${this._favoritePositions.map(
-                      (pos) => html`
-                        <div
-                          class=${classMap({
-                            'favorite-button': true,
-                            [`favorite-button-${pos}`]: true,
-                            active: pos === value,
-                          })}
-                          @click=${() => this._applyFavorite(pos)}
-                        >
-                          <div class="button-inner"><span class="button-label">${pos}%</span></div>
-                        </div>
-                      `
-                    )}
-                  </section>
-                </div>
-              </div>
+              <section class="favorites">
+                ${this._favoritePositions.map(
+                  (pos) => html`
+                    <div
+                      class=${classMap({
+                        'favorite-button': true,
+                        [`favorite-button-${pos}`]: true,
+                        active: pos === value,
+                      })}
+                      @click=${() => this._applyFavorite(pos)}
+                    >
+                      <div class="button-inner"><span class="button-label">${pos}%</span></div>
+                    </div>
+                  `
+                )}
+              </section>
             `
           : ''}
       </ha-card>
@@ -1860,7 +1913,7 @@ class ChronoSliderCard extends LitElement {
     .control-slider-host.active {
       display: block;
     }
-    .container {
+    .slider-container {
       position: relative;
       height: 100%;
       width: 100%;
@@ -1892,15 +1945,12 @@ class ChronoSliderCard extends LitElement {
       opacity: var(--control-slider-background-opacity);
     }
     .slider-track-bar {
-      --slider-size: 100%;
+      --slider-size: calc(100% - 2 * var(--handle-margin) - var(--handle-size));
       position: absolute;
       height: 100%;
       width: 100%;
       background-color: var(--control-slider-color);
       transition: transform 180ms ease-in-out, background-color 180ms ease-in-out;
-    }
-    .slider-track-bar.show-handle {
-      --slider-size: calc(100% - 2 * var(--handle-margin) - var(--handle-size));
     }
     .slider-track-bar {
       --slider-track-bar-border-radius: min(
@@ -2022,29 +2072,18 @@ class ChronoSliderCard extends LitElement {
     }
 
     /* ---- Favorite-position buttons ---- */
-    .favorites-groups {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--ha-space-3, 12px);
-      width: 100%;
-    }
-    .favorites-group {
-      width: 100%;
-      max-width: 384px;
-      margin: 0;
-    }
-    .favorites-container {
+    .favorites {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: -8px;
       flex-wrap: wrap;
+      width: 100%;
       max-width: 384px;
+      margin: -8px;
       user-select: none;
     }
-    .favorites-container > * {
+    .favorites > * {
       margin: 8px;
     }
     .favorite-button {
