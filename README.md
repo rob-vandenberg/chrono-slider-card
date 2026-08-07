@@ -181,6 +181,8 @@ Every visual piece of the card can be restyled directly from your dashboard conf
 type: custom:chrono-slider-card
 entity: cover.living_room_blind
 styles:
+  ha_card:
+    border: none
   slider:
     border_width: 2px
     border_style: solid
@@ -189,7 +191,15 @@ styles:
     border_radius: 4px
 ```
 
-The class names match exactly what you'd find inspecting the card with your browser's dev tools (underscores instead of dashes). A handful of the most useful ones: `card`, `title`, `state`, `percentage`, `last_changed`, `control_slider_host`, `slider_container`, `slider`, `handle`, `control_button_group`, `control_btn`, `icon_button_group`, `icon_toggle_button`, `favorites`, `favorite_button`.
+The class names match exactly what you'd find inspecting the card with your browser's dev tools (underscores instead of dashes). A handful of the most useful ones: `ha_card`, `title`, `state`, `percentage`, `last_changed`, `control_slider_host`, `slider_container`, `slider`, `handle`, `control_button_group`, `control_btn`, `icon_button_group`, `icon_toggle_button`, `favorites`, `favorite_button`.
+
+One key is special: `host` targets the card's own outer element (not a class) - use it to change things like the card's outer margin.
+
+```yaml
+styles:
+  host:
+    margin: 0
+```
 
 Some elements exist as more than one instance on the card - the three directional buttons, the two mode-toggle buttons, and the favorite-position buttons. Styling their shared class (e.g. `control_btn`, `icon_toggle_button`, `favorite_button`) changes all of them at once. To style just one, use its own specific class instead: `control_btn_close` / `control_btn_stop` / `control_btn_open` for the directional buttons, `icon_toggle_button_position` / `icon_toggle_button_button` for the mode-toggle buttons, and `favorite_button_<value>` (e.g. `favorite_button_30`) for an individual favorite position.
 

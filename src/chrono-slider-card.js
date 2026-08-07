@@ -76,9 +76,14 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.4.49';
+const CARD_VERSION = '1.4.50';
 
 // --- Version History ---------------------------------------------------------
+// v1.4.50: styles: gained a reserved 'host' key that targets the card's own
+//          :host element (e.g. styles: { host: { margin: 0 } }) instead of
+//          being translated into a regular .host class selector - the only
+//          way to reach :host from the styles: block, since it's a
+//          pseudo-class, not a real class.
 // v1.4.49: Fixed the Opened/Closed state text for partial positions. It was
 //          derived from a blind word-swap of entity.state (which is only
 //          ever 'open' or 'closed', so any partial position collapsed to
@@ -811,7 +816,9 @@ function cscToKebab(str) {
 // into a single ready-to-inject CSS text block. No validation of class names
 // or property names against anything - any key the user writes is accepted
 // and converted as-is; this is a literal YAML->CSS translation, not a
-// filtered one.
+// filtered one. One reserved key: 'host' targets the card's own :host
+// element (a pseudo-class, not a real class) instead of .host - there is
+// no class="host" anywhere in this card's markup, so this can't collide.
 function cscBuildUserStylesCss(stylesConfig) {
   let css = '';
   for (const [className, props] of Object.entries(stylesConfig)) {
@@ -819,7 +826,8 @@ function cscBuildUserStylesCss(stylesConfig) {
     const declarations = Object.entries(props)
       .map(([prop, value]) => `${cscToKebab(prop)}: ${value};`)
       .join(' ');
-    css += `.${cscToKebab(className)} { ${declarations} }\n`;
+    const selector = className === 'host' ? ':host' : `.${cscToKebab(className)}`;
+    css += `${selector} { ${declarations} }\n`;
   }
   return css;
 }
