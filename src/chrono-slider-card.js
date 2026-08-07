@@ -76,9 +76,27 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.4.52';
+const CARD_VERSION = '1.5.53';
 
 // --- Version History ---------------------------------------------------------
+// v1.5.53: Opened/Closed state text now switches OPEN_CLOSE_THRESHOLD raw
+//          position points before the exact closed extreme, not only at the
+//          exact extreme itself - a barely-cracked-open cover now reads as
+//          Closed rather than Opened. Button enable/disable is unaffected -
+//          still the exact extreme. Removed cscIsFullyOpenCover,
+//          cscIsFullyClosedCover, cscCanCloseCover, cscIsClosingCover,
+//          cscCanStopCover - each was either inlined into its one real
+//          caller or was a pure pass-through with zero logic of its own
+//          (e.g. cscCanCloseCover(entity,d) was exactly
+//          cscCanOpenCover(entity,!d) and nothing else - "close" is "open"
+//          with deviceOpenState negated, same as everywhere else that
+//          convention is used in this file). cscCanOpenCover is now
+//          self-contained (extreme check inlined) and used directly for
+//          both directions by callers negating deviceOpenState themselves.
+//          Added the generic cscIsBelowThreshold(value, threshold) - no
+//          knowledge of covers or positions, purely a comparison - and
+//          cscIsCoverStateClosed(), the one place that actually needs
+//          OPEN_CLOSE_THRESHOLD.
 // v1.4.52: Typing a literal \n into the name field now forces a line break
 //          in the title, and normal spaces no longer wrap automatically -
 //          full manual control over breaks instead of automatic wrapping.
@@ -680,6 +698,13 @@ const DEFAULT_SHOW_FAVORITES = true;
 const DEFAULT_CONTROL = 'slider';
 const DEFAULT_FAVORITE_POSITIONS = [0, 25, 75, 100];
 
+// The Opened/Closed state text switches at this distance (in raw HA
+// position points) from the closed extreme, rather than only at the
+// exact extreme itself - see cscIsCoverStateClosed(). Only the state
+// text uses this; button enable/disable (cscCanOpenCover) always uses
+// the exact extreme, unaffected by this constant.
+const OPEN_CLOSE_THRESHOLD = 10;
+
 // Card sizing within the dashboard view - see getCardSize()/
 // getGridOptions(). Not currently exposed as config options (no YAML
 // key reads these yet), unlike the DEFAULT_* values above.
@@ -715,40 +740,49 @@ function cscComputeCloseIcon(entity) {
 
 // deviceOpenState: true if raw HA current_position===100 (fully
 // retracted) is this device's "open" end - see DEVICE_TYPE_DEFAULTS.
-function cscIsFullyOpenCover(entity, deviceOpenState) {
-  if (entity.attributes.current_position !== undefined) {
-    return entity.attributes.current_position === (deviceOpenState ? 100 : 0);
-  }
-  return entity.state === (deviceOpenState ? 'open' : 'closed');
-}
-function cscIsFullyClosedCover(entity, deviceOpenState) {
-  if (entity.attributes.current_position !== undefined) {
-    return entity.attributes.current_position === (deviceOpenState ? 0 : 100);
-  }
-  return entity.state === (deviceOpenState ? 'closed' : 'open');
-}
 function cscIsOpeningCover(entity, deviceOpenState) {
   return entity.state === (deviceOpenState ? 'opening' : 'closing');
 }
-function cscIsClosingCover(entity, deviceOpenState) {
-  return entity.state === (deviceOpenState ? 'closing' : 'opening');
-}
+
+// Can the entity still move further open? Used for both directions:
+// the close-button case calls this with deviceOpenState negated
+// (cscCanOpenCover(entity, !deviceOpenState) is exactly "can it still
+// move further closed" - the two questions are the same question with
+// the open/closed convention flipped, which is exactly what negating
+// deviceOpenState already means everywhere else in this file).
 function cscCanOpenCover(entity, deviceOpenState) {
   if (entity.state === UNAVAILABLE) return false;
   const assumedState = entity.attributes.assumed_state === true;
-  return (
-    assumedState || (!cscIsFullyOpenCover(entity, deviceOpenState) && !cscIsOpeningCover(entity, deviceOpenState))
-  );
+  let isFullyOpen;
+  if (entity.attributes.current_position !== undefined) {
+    isFullyOpen = entity.attributes.current_position === (deviceOpenState ? 100 : 0);
+  } else {
+    isFullyOpen = entity.state === (deviceOpenState ? 'open' : 'closed');
+  }
+  return assumedState || (!isFullyOpen && !cscIsOpeningCover(entity, deviceOpenState));
 }
-function cscCanCloseCover(entity, deviceOpenState) {
-  if (entity.state === UNAVAILABLE) return false;
-  const assumedState = entity.attributes.assumed_state === true;
-  return (
-    assumedState || (!cscIsFullyClosedCover(entity, deviceOpenState) && !cscIsClosingCover(entity, deviceOpenState))
-  );
+
+// Generic: is value below threshold? No knowledge of covers, positions,
+// or open/closed - purely a comparison, like min()/max(). The equal
+// case is deliberately undefined by design (callers don't need to
+// distinguish it) - see cscIsCoverStateClosed() for how a caller uses
+// this asymmetry.
+function cscIsBelowThreshold(value, threshold) {
+  if (value < threshold) return true;
+  return false;
 }
-function cscCanStopCover(entity) {
-  return entity.state !== UNAVAILABLE;
+
+// Is the entity within OPEN_CLOSE_THRESHOLD raw position points of the
+// closed extreme? State-text use only (Opened/Closed) - not used for
+// button enable/disable, which always needs the exact extreme
+// (cscCanOpenCover), not a band.
+function cscIsCoverStateClosed(entity, deviceOpenState) {
+  if (entity.attributes.current_position !== undefined) {
+    const pos = entity.attributes.current_position;
+    if (deviceOpenState) return cscIsBelowThreshold(pos, OPEN_CLOSE_THRESHOLD);
+    return !cscIsBelowThreshold(pos, 100 - OPEN_CLOSE_THRESHOLD);
+  }
+  return entity.state === (deviceOpenState ? 'closed' : 'open');
 }
 
 function cscStateActiveCover(compareState) {
@@ -1713,11 +1747,8 @@ class ChronoSliderCard extends LitElement {
   _callDirectional(ourAction) {
     if (!this._hass || !this._entity) return;
     const rawAction = this._deviceOpenState ? ourAction : ourAction === 'open' ? 'close' : 'open';
-    const disabled =
-      ourAction === 'open'
-        ? !cscCanOpenCover(this._entity, this._deviceOpenState)
-        : !cscCanCloseCover(this._entity, this._deviceOpenState);
-    if (disabled) return;
+    const openState = ourAction === 'open' ? this._deviceOpenState : !this._deviceOpenState;
+    if (!cscCanOpenCover(this._entity, openState)) return;
     this._hass.callService('cover', `${rawAction}_cover`, { entity_id: this._config.entity });
   }
 
@@ -1755,21 +1786,24 @@ class ChronoSliderCard extends LitElement {
     const STATE_SWAP = { open: 'closed', closed: 'open', opening: 'closing', closing: 'opening' };
     const effectiveState = this._deviceOpenState ? entity.state : STATE_SWAP[entity.state] ?? entity.state;
 
-    // stateWord: Opening/Closing come from entity.state (no position
-    // equivalent for motion). Opened/Closed are derived from
-    // current_position via cscIsFullyClosedCover - the same,
-    // already-correct, device_open_state-aware function the open/close
-    // buttons use - rather than word-swapping entity.state, which is
-    // only ever 'open' or 'closed' (binary) and so can't distinguish a
-    // partial position from a fully open one. Anything else (e.g.
+    // stateWord: Opening/Closing come from entity.state via
+    // cscIsOpeningCover (Closing is just "opening" with deviceOpenState
+    // negated - closing is opening with the convention flipped, same as
+    // everywhere else deviceOpenState is negated in this file). Opened/
+    // Closed are derived from current_position via
+    // cscIsCoverStateClosed - a threshold band near the closed extreme
+    // (OPEN_CLOSE_THRESHOLD), not the exact-match cscCanOpenCover uses
+    // for button enable/disable - so it's correct for partial positions
+    // too, and distinguishes "barely open" from "fully open" the way a
+    // binary word-swap of entity.state never could. Anything else (e.g.
     // unavailable, unknown) passes through unchanged.
     let stateWord = '';
     if (cscIsOpeningCover(entity, this._deviceOpenState)) {
       stateWord = 'Opening';
-    } else if (cscIsClosingCover(entity, this._deviceOpenState)) {
+    } else if (cscIsOpeningCover(entity, !this._deviceOpenState)) {
       stateWord = 'Closing';
     } else if (entity.state === 'open' || entity.state === 'closed') {
-      stateWord = cscIsFullyClosedCover(entity, this._deviceOpenState) ? 'Closed' : 'Opened';
+      stateWord = cscIsCoverStateClosed(entity, this._deviceOpenState) ? 'Closed' : 'Opened';
     } else {
       stateWord = entity.state;
     }
@@ -1798,8 +1832,8 @@ class ChronoSliderCard extends LitElement {
     );
 
     const openDisabled = !cscCanOpenCover(entity, this._deviceOpenState);
-    const closeDisabled = !cscCanCloseCover(entity, this._deviceOpenState);
-    const stopDisabled = !cscCanStopCover(entity);
+    const closeDisabled = !cscCanOpenCover(entity, !this._deviceOpenState);
+    const stopDisabled = entity.state === UNAVAILABLE;
 
     // Icon glyph matches whichever raw action actually fires when that
     // button is pressed (computeOpenIcon/computeCloseIcon are glyph
