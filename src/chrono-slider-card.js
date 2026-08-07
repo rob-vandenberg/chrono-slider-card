@@ -76,9 +76,28 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.42';
+const CARD_VERSION = '1.3.43';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.43: Corrected v1.3.42: --state-cover-inactive-color was removed as
+//          "dead" based on a literal-text search for
+//          var(--state-cover-inactive-color) in the file, which never
+//          exists as written text - cscComputeCssVariable() assembles the
+//          fallback var() chain from an array at runtime, so the search
+//          couldn't find what was really a calculated use, not a
+//          hardcoded one. Removing it made every closed device fall
+//          through to HA's plain generic --state-inactive-color gray
+//          instead of a muted tint of its own state color, which was a
+//          real, deliberate part of the card's look, not an accidental
+//          side effect worth keeping. Restored: openColor and its
+//          computation are back, and --state-cover-inactive-color is
+//          written into the same _stateStyleSheet.replaceSync() call
+//          alongside --slider-color/--slider-background (not the inline
+//          style attribute - that was never acceptable, mistake or not).
+//          Left unrenamed, matching HA's own --state-{active|inactive}-
+//          color convention rather than the card's --slider-* scheme,
+//          since it's slotting into HA's own fallback chain, not an
+//          end-user override point.
 // v1.3.42: Renamed the --control-slider-* CSS custom property family to
 //          --slider-* (color/background/background-opacity/thickness/
 //          border-radius) - shorter, guessable names for a styles:
@@ -1661,6 +1680,19 @@ class ChronoSliderCard extends LitElement {
         stateWord = effectiveState;
     }
     const deviceClass = entity.attributes.device_class;
+    // openColor intentionally stays keyed to the literal raw 'open'
+    // color regardless of device_open_state - a fixed style reference,
+    // not tied to this device's actual current state. Sits ahead of
+    // HA's own generic --state-inactive-color in the fallback chain
+    // cscComputeCssVariable() builds inside cscStateColorCssCover() (see
+    // that function - the chain is assembled as a nested var() string at
+    // runtime, not written out literally anywhere, easy to miss with a
+    // literal-text search), so a closed device shows a muted tint of its
+    // own color rather than HA's plain generic gray. Name matches HA's
+    // own --state-{active|inactive}-color convention deliberately, not
+    // renamed alongside --slider-* - it's slotting into HA's own
+    // fallback chain, not an end-user override point.
+    const openColor = cscStateColorCssCover(entity.state, deviceClass, 'open');
     const color = cscStateColorCssCover(effectiveState, deviceClass);
     // Entity-state-driven, so it changes on every state update - written
     // into _stateStyleSheet (see constructor/firstUpdated) rather than
@@ -1668,7 +1700,7 @@ class ChronoSliderCard extends LitElement {
     // against it. Kept in sync with every render(), same as the template
     // itself.
     this._stateStyleSheet.replaceSync(
-      `.control-slider-host { --slider-color: ${color}; --slider-background: ${color}; }`
+      `.control-slider-host { --state-cover-inactive-color: ${openColor}; --slider-color: ${color}; --slider-background: ${color}; }`
     );
 
     const openDisabled = !cscCanOpenCover(entity, this._deviceOpenState);
