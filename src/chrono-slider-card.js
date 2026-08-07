@@ -76,9 +76,10 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.45';
+const CARD_VERSION = '1.4.46';
 
 // --- Version History ---------------------------------------------------------
+// v1.4.46: Renamed the title element's classname from card-title to title.
 // v1.3.45: Removed the getGridOptions() default columns value (and
 //          GRID_COLUMNS_DEFAULT) - verified live that this card's own
 //          internal max-width: var(--slider-thickness) already handles
@@ -1756,7 +1757,7 @@ class ChronoSliderCard extends LitElement {
 
     return html`
       <ha-card class="ha-card">
-        ${this._showName ? html`<p class="card-title">${title}</p>` : ''}
+        ${this._showName ? html`<p class="title">${title}</p>` : ''}
 
         <div class="state-header">
           ${this._showState ? html`<p class="state">${stateWord}</p>` : ''}
@@ -1875,7 +1876,7 @@ class ChronoSliderCard extends LitElement {
     }
 
     /* ---- Title ---- */
-    .card-title {
+    .title {
       align-self: flex-start;
       margin: 0 0 var(--ha-space-4, 16px) 0;
       font-size: var(--ha-font-size-xl, 1.25rem);
