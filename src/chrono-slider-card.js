@@ -76,9 +76,17 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.39';
+const CARD_VERSION = '1.3.40';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.40: Corrected DEVICE_TYPE_DEFAULTS.awning.device_open_state true->false.
+//          Awning's "open" is fully extended (raw position 0), so the "Open"
+//          word must show at raw 0, not raw 100 - true was the leftover
+//          hand-compensated value from a prior session's quick-fix, no
+//          longer needed now that device_open_percentage and
+//          device_open_slider are both corrected too. Awning is now
+//          false/false/false (fully inverted from native in all three
+//          respects), matching Cover's clean true/true/true.
 // v1.3.39: Removed invert_position entirely (setConfig() assignment and its
 //          use in _rawPosition()) - was introduced unilaterally in a prior
 //          session without being agreed as a design decision; per-entity
@@ -490,7 +498,7 @@ const DEVICE_TYPE_DEFAULTS = {
     device_open_slider: false,
   },
   awning: {
-    device_open_state: true,
+    device_open_state: false,
     device_open_percentage: false,
     device_open_slider: false,
   },
