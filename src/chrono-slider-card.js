@@ -76,9 +76,30 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.4.50';
+const CARD_VERSION = '1.4.52';
 
 // --- Version History ---------------------------------------------------------
+// v1.4.52: Typing a literal \n into the name field now forces a line break
+//          in the title, and normal spaces no longer wrap automatically -
+//          full manual control over breaks instead of automatic wrapping.
+//          Added cscExpandEscapedNewlines(), a shared display-time helper
+//          (not editor/config-side) that converts a literal backslash-n
+//          into a real newline character wherever a text config value is
+//          shown as card content; applied to title. .title gained
+//          white-space: pre (preserves the real newline as a forced break,
+//          disables auto-wrap, preserves literal spaces as typed).
+// v1.4.51: .title no longer hard-truncates to a single line with an
+//          ellipsis. Reworked to mirror .state-header's proven pattern
+//          (see v1.1.24-26): dropped width:100%/align-self:flex-start so
+//          .title shrink-wraps as a flex item, letting ha-card's existing
+//          align-items:center symmetrically center it even when it's
+//          wider than the available space and wraps onto multiple lines -
+//          text-align:center on .title itself was, on its own, only
+//          correct for content that fit; a fixed-width box can't
+//          symmetrically center oversized content via text-align alone.
+//          Dropped overflow:hidden/text-overflow:ellipsis/white-space:
+//          nowrap, which forced the single-line truncation in the first
+//          place.
 // v1.4.50: styles: gained a reserved 'host' key that targets the card's own
 //          :host element (e.g. styles: { host: { margin: 0 } }) instead of
 //          being translated into a regular .host class selector - the only
@@ -801,6 +822,17 @@ function cscRelativeTimeText(dateString) {
     }
   }
   return '';
+}
+
+// Converts a literal backslash-n (two characters, as typed - not an actual
+// newline) into a real newline character. Used wherever a user-typed config
+// text value (e.g. name) is displayed as card content, so the user can force
+// a line break at a specific point. Not applied to config.styles or any
+// editor input value - this is a display-time transform, not a config
+// transform: the config keeps the literal characters the user typed, so it
+// round-trips through YAML unambiguously regardless of quoting style.
+function cscExpandEscapedNewlines(text) {
+  return String(text).replace(/\\n/g, '\n');
 }
 
 // --- Editor field helper functions --------------------------------------------
@@ -1777,7 +1809,7 @@ class ChronoSliderCard extends LitElement {
     const closeIconPath = this._deviceOpenState ? cscComputeCloseIcon(entity) : cscComputeOpenIcon(entity);
 
     const title = this._showName
-      ? this._config.name || entity.attributes.friendly_name || this._config.entity
+      ? cscExpandEscapedNewlines(this._config.name || entity.attributes.friendly_name || this._config.entity)
       : '';
 
     return html`
@@ -1902,17 +1934,13 @@ class ChronoSliderCard extends LitElement {
 
     /* ---- Title ---- */
     .title {
-      align-self: flex-start;
       text-align: center;
+      white-space: pre;
       margin: 0 0 var(--ha-space-4, 16px) 0;
       font-size: var(--ha-font-size-xl, 1.25rem);
       line-height: var(--ha-line-height-condensed, 1.2);
       font-weight: var(--ha-font-weight-medium, 500);
       color: var(--primary-text-color);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      width: 100%;
     }
 
     /* ---- State + relative-time label ---- */
