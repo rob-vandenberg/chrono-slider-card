@@ -76,9 +76,20 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.44';
+const CARD_VERSION = '1.3.45';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.45: Removed the getGridOptions() default columns value (and
+//          GRID_COLUMNS_DEFAULT) - verified live that this card's own
+//          internal max-width: var(--slider-thickness) already handles
+//          wide grid allocations gracefully (extra space just sits
+//          empty, nothing looks broken), so unlike min_columns there's
+//          no real lower-bound problem a default here is protecting
+//          against. Leaving columns unset defers to Home Assistant's own
+//          fallback for that value. min_columns: 3 (GRID_MIN_COLUMNS_
+//          DEFAULT) stays - verified live as the actual point elements
+//          start protruding outside the card at narrower widths, a real
+//          floor worth declaring.
 // v1.3.44: No hardcoded literal belongs inside a method body - moved the
 //          last four still sitting there into the Constants section,
 //          placed where a reader would actually look rather than
@@ -629,7 +640,6 @@ const DEFAULT_FAVORITE_POSITIONS = [0, 25, 75, 100];
 // getGridOptions(). Not currently exposed as config options (no YAML
 // key reads these yet), unlike the DEFAULT_* values above.
 const CARD_SIZE_HINT = 6;
-const GRID_COLUMNS_DEFAULT = 4;
 const GRID_MIN_COLUMNS_DEFAULT = 3;
 
 // --- Generic csc-prefixed helper functions (pure, DOM-free) --------------------
@@ -1486,7 +1496,6 @@ class ChronoSliderCard extends LitElement {
   // its section.
   getGridOptions() {
     return {
-      columns: GRID_COLUMNS_DEFAULT,
       min_columns: GRID_MIN_COLUMNS_DEFAULT,
     };
   }
