@@ -10,9 +10,9 @@
   <img src="art/banner.png" width="800" alt="Chrono Slider Card in action">
 
   <p align="center">
-    <strong>A vertical slider card for your covers, screens, and awnings.<br>
-            Open means whatever makes sense for your device - your way.<br>
-            Set up entirely with a visual editor - no YAML needed.</strong>
+    <strong>A vertical slider card for your covers, screens, shades, blinds and awnings.<br>
+            Slider direction, state and percentage are configurable so the slider<br>
+            represents your device as makes the most sense to you.</strong>
   </p>
 
   <p align="center">
