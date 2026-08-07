@@ -76,9 +76,42 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.3.41';
+const CARD_VERSION = '1.3.42';
 
 // --- Version History ---------------------------------------------------------
+// v1.3.42: Renamed the --control-slider-* CSS custom property family to
+//          --slider-* (color/background/background-opacity/thickness/
+//          border-radius) - shorter, guessable names for a styles:
+//          feature that's designed to be usable from gut feeling alone,
+//          matching the same reasoning already applied to class names.
+//          Eliminated the last remaining dynamic inline style: entity-
+//          state-driven --slider-color/--slider-background were being
+//          set via the element's inline style attribute on every render,
+//          which - being a higher-priority cascade origin than any
+//          stylesheet, including adoptedStyleSheets - made them
+//          permanently un-overridable via styles: no matter what class
+//          or variable name was targeted, unlike the v1.3.41 border-
+//          radius fix which only had to beat a same-origin tie. Moved
+//          this into a second constructed stylesheet (_stateStyleSheet),
+//          updated via replaceSync() on every render() and adopted in
+//          firstUpdated() between Lit's static defaults and the existing
+//          user _userStyleSheet, so styles: overrides now work for
+//          color/background too. Removed --state-cover-inactive-color
+//          and the openColor value that fed it - traced and confirmed
+//          dead (nothing in this card's own CSS ever read it, and
+//          custom properties don't inherit upward out of the shadow
+//          root to affect anything else); the entity-unavailable
+//          graying users see comes entirely from cscStateColorCssCover's
+//          own 'var(--state-unavailable-color)' return feeding
+//          --slider-color/--slider-background, unrelated to the removed
+//          variable. Converted the slider handle from a
+//          .slider-track-bar::after pseudo-element to a real .handle
+//          element, addressable via styles: like every other visible
+//          part of the card. --value intentionally stays on the inline
+//          style/imperative setProperty() path (both the static render
+//          default and the drag-time fast path) - functional per-frame
+//          drag state, not a look, and the imperative path exists
+//          specifically to bypass Lit's render cycle for performance.
 // v1.3.41: styles: config feature was fixed at its actual cause instead of
 //          worked around: user CSS was being injected as an inline <style>
 //          element, which per the platform's default styleOrder ("inner
@@ -510,7 +543,7 @@ console.info(
 const UNAVAILABLE = 'unavailable';
 
 // These must match the CSS custom properties in static styles below:
-// --control-slider-thickness: 130px, --handle-margin: thickness/8, --handle-size: 4px
+// --slider-thickness: 130px, --handle-margin: thickness/8, --handle-size: 4px
 const HANDLE_MARGIN_PX = 130 / 8;
 const HANDLE_SIZE_PX = 4;
 
@@ -1287,10 +1320,15 @@ class ChronoSliderCard extends LitElement {
 
   constructor() {
     super();
-    // Constructed once and mutated in place via replaceSync() in
-    // setConfig() - never replaced, so a single adoptedStyleSheets push
-    // in firstUpdated() stays valid for the component's lifetime, and
-    // config-editor live-edits just update this same sheet's content.
+    // Two constructed sheets, adopted in firstUpdated() in this fixed
+    // order (later = wins ties): _stateStyleSheet first, _userStyleSheet
+    // last. _stateStyleSheet carries the entity-state-driven slider color
+    // (updated via replaceSync() on every render() - it changes whenever
+    // the entity's state does, unlike _userStyleSheet which only changes
+    // on setConfig()). Neither is ever replaced as an object, only
+    // mutated in place, so the adoptedStyleSheets push in firstUpdated()
+    // stays valid for the component's lifetime.
+    this._stateStyleSheet = new CSSStyleSheet();
     this._userStyleSheet = new CSSStyleSheet();
   }
 
@@ -1427,10 +1465,15 @@ class ChronoSliderCard extends LitElement {
     this._sliderEl = this.renderRoot.querySelector('#slider');
     this._tooltipEl = this.renderRoot.querySelector('.tooltip');
     // Appended after Lit's own static-style sheets (already present in
-    // adoptedStyleSheets by this point) so it wins cascade ties against
+    // adoptedStyleSheets by this point) so both win cascade ties against
     // them, on any property, not just ones the built-in styles leave
-    // undeclared.
-    this.renderRoot.adoptedStyleSheets = [...this.renderRoot.adoptedStyleSheets, this._userStyleSheet];
+    // undeclared. _stateStyleSheet before _userStyleSheet, so a user
+    // override can in turn win against the entity-state-driven color.
+    this.renderRoot.adoptedStyleSheets = [
+      ...this.renderRoot.adoptedStyleSheets,
+      this._stateStyleSheet,
+      this._userStyleSheet,
+    ];
   }
 
   // Raw HA current_position (0-100, verified platform-wide: 100 = fully
@@ -1618,11 +1661,15 @@ class ChronoSliderCard extends LitElement {
         stateWord = effectiveState;
     }
     const deviceClass = entity.attributes.device_class;
-    // openColor intentionally stays keyed to the literal raw 'open'
-    // color regardless of device_open_state - a fixed style reference,
-    // not tied to this device's actual current state.
-    const openColor = cscStateColorCssCover(entity.state, deviceClass, 'open');
     const color = cscStateColorCssCover(effectiveState, deviceClass);
+    // Entity-state-driven, so it changes on every state update - written
+    // into _stateStyleSheet (see constructor/firstUpdated) rather than
+    // the inline style attribute, so a styles: override can still win
+    // against it. Kept in sync with every render(), same as the template
+    // itself.
+    this._stateStyleSheet.replaceSync(
+      `.control-slider-host { --slider-color: ${color}; --slider-background: ${color}; }`
+    );
 
     const openDisabled = !cscCanOpenCover(entity, this._deviceOpenState);
     const closeDisabled = !cscCanCloseCover(entity, this._deviceOpenState);
@@ -1653,11 +1700,6 @@ class ChronoSliderCard extends LitElement {
           <div class="main-control">
             <div
               class=${classMap({ 'control-slider-host': true, active: this._toggleMode === 'position' })}
-              style=${styleMap({
-                '--state-cover-inactive-color': openColor,
-                '--control-slider-color': color,
-                '--control-slider-background': color,
-              })}
             >
               <div
                 class="slider-container"
@@ -1666,7 +1708,9 @@ class ChronoSliderCard extends LitElement {
               >
                 <div id="slider" class="slider" role="slider" tabindex="0" aria-orientation="vertical">
                   <div class="slider-track-background"></div>
-                  <div class="slider-track-bar"></div>
+                  <div class="slider-track-bar">
+                    <div class="handle"></div>
+                  </div>
                 </div>
                 <span class="tooltip"></span>
               </div>
@@ -1898,17 +1942,17 @@ class ChronoSliderCard extends LitElement {
     /* ---- Slider ---- */
     .control-slider-host {
       display: none;
-      --control-slider-color: var(--primary-color);
-      --control-slider-background: var(--disabled-color);
-      --control-slider-background-opacity: 0.2;
-      --control-slider-thickness: 130px;
-      --control-slider-border-radius: var(--ha-border-radius-6xl, 9999px);
+      --slider-color: var(--primary-color);
+      --slider-background: var(--disabled-color);
+      --slider-background-opacity: 0.2;
+      --slider-thickness: 130px;
+      --slider-border-radius: var(--ha-border-radius-6xl, 9999px);
       height: 45vh;
       max-height: 320px;
       min-height: 200px;
       width: 100%;
       min-width: 80px;
-      max-width: var(--control-slider-thickness);
+      max-width: var(--slider-thickness);
     }
     .control-slider-host.active {
       display: block;
@@ -1918,13 +1962,13 @@ class ChronoSliderCard extends LitElement {
       height: 100%;
       width: 100%;
       --handle-size: 4px;
-      --handle-margin: calc(var(--control-slider-thickness) / 8);
+      --handle-margin: calc(var(--slider-thickness) / 8);
     }
     .slider {
       position: relative;
       height: 100%;
       width: 100%;
-      border-radius: var(--control-slider-border-radius);
+      border-radius: var(--slider-border-radius);
       transform: translateZ(0);
       transition: box-shadow 180ms ease-in-out;
       outline: none;
@@ -1933,7 +1977,7 @@ class ChronoSliderCard extends LitElement {
       touch-action: none;
     }
     .slider:focus-visible {
-      box-shadow: 0 0 0 2px var(--control-slider-color);
+      box-shadow: 0 0 0 2px var(--slider-color);
     }
     .slider-track-background {
       position: absolute;
@@ -1941,20 +1985,20 @@ class ChronoSliderCard extends LitElement {
       left: 0;
       height: 100%;
       width: 100%;
-      background: var(--control-slider-background);
-      opacity: var(--control-slider-background-opacity);
+      background: var(--slider-background);
+      opacity: var(--slider-background-opacity);
     }
     .slider-track-bar {
       --slider-size: calc(100% - 2 * var(--handle-margin) - var(--handle-size));
       position: absolute;
       height: 100%;
       width: 100%;
-      background-color: var(--control-slider-color);
+      background-color: var(--slider-color);
       transition: transform 180ms ease-in-out, background-color 180ms ease-in-out;
     }
     .slider-track-bar {
       --slider-track-bar-border-radius: min(
-        var(--control-slider-border-radius),
+        var(--slider-border-radius),
         var(--ha-border-radius-md, 12px)
       );
       top: 0;
@@ -1964,9 +2008,7 @@ class ChronoSliderCard extends LitElement {
          moves the same direction as the drag (down = more open). */
       transform: translate3d(0, calc((var(--value, 0) - 1) * var(--slider-size)), 0);
     }
-    .slider-track-bar::after {
-      display: block;
-      content: '';
+    .handle {
       position: absolute;
       margin: auto;
       border-radius: var(--handle-size);
