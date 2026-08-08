@@ -16,6 +16,7 @@ venv/
 Thumbs.db
 
 # Folders
+logs/
 docs/
 backup/
 artwork/
