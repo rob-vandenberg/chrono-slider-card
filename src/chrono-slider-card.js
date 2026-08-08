@@ -17,9 +17,15 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.6.60';
+const CARD_VERSION = '1.6.61';
 
 // --- Version History ---------------------------------------------------------
+// v1.6.61: --slider-thickness renamed to --slider-max-width, paired with new
+//          --slider-min-width (both now real, addressable variables instead
+//          of one variable + a hardcoded 80px literal). --handle-margin now
+//          derived from whichever of the two actually wins the width
+//          tug-of-war, fixing the handle-margin mismatch when
+//          --slider-max-width is configured below --slider-min-width.
 // v1.6.60: Header comment block cut down to a short description; version
 //          history condensed to 1-2 lines per entry, all v1.2.x and older
 //          entries (including the vertical-slider-card lineage section)
@@ -98,7 +104,7 @@ const UNAVAILABLE = 'unavailable';
 const RELATIVE_TIME_REFRESH_INTERVAL_MS = 30000;
 
 // These must match the CSS custom properties in static styles below:
-// --slider-thickness: 130px, --handle-margin: thickness/8, --handle-size: 4px
+// --slider-max-width: 130px, --handle-margin: max(min-width, max-width)/8, --handle-size: 4px
 const HANDLE_MARGIN_PX = 130 / 8;
 const HANDLE_SIZE_PX = 4;
 
@@ -1582,14 +1588,15 @@ class ChronoSliderCard extends LitElement {
       --slider-color: var(--primary-color);
       --slider-background: var(--disabled-color);
       --slider-background-opacity: 0.2;
-      --slider-thickness: 130px;
+      --slider-max-width: 130px;
+      --slider-min-width: 80px;
       --slider-border-radius: var(--ha-border-radius-6xl, 9999px);
       height: 45vh;
       max-height: 320px;
       min-height: 200px;
       width: 100%;
-      min-width: 80px;
-      max-width: var(--slider-thickness);
+      min-width: var(--slider-min-width);
+      max-width: var(--slider-max-width);
     }
     .control-slider-host.active {
       display: block;
@@ -1599,7 +1606,7 @@ class ChronoSliderCard extends LitElement {
       height: 100%;
       width: 100%;
       --handle-size: 4px;
-      --handle-margin: calc(var(--slider-thickness) / 8);
+      --handle-margin: calc(max(var(--slider-min-width), var(--slider-max-width)) / 8);
     }
     .slider {
       position: relative;
