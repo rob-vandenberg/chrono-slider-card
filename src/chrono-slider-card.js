@@ -76,9 +76,11 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.5.57';
+const CARD_VERSION = '1.5.58';
 
 // --- Version History ---------------------------------------------------------
+// v1.5.58: Removed legacy HA-native border-radius clamp on .slider-track-bar;
+//          now follows --slider-border-radius directly, matching .slider.
 // v1.5.57: Fixed directional buttons still moving the wrong way for
 //          device_open_state:true entities. v1.5.55 fixed enable/disable
 //          but missed that _callDirectional('close')/('open') was still
@@ -2225,13 +2227,9 @@ class ChronoSliderCard extends LitElement {
       transition: transform 180ms ease-in-out, background-color 180ms ease-in-out;
     }
     .slider-track-bar {
-      --slider-track-bar-border-radius: min(
-        var(--slider-border-radius),
-        var(--ha-border-radius-md, 12px)
-      );
       top: 0;
       left: 0;
-      border-radius: var(--slider-track-bar-border-radius);
+      border-radius: var(--slider-border-radius);
       /* Fill grows top-down as value increases, so the visible boundary
          moves the same direction as the drag (down = more open). */
       transform: translate3d(0, calc((var(--value, 0) - 1) * var(--slider-size)), 0);
