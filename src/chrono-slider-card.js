@@ -76,9 +76,29 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.5.55';
+const CARD_VERSION = '1.5.57';
 
 // --- Version History ---------------------------------------------------------
+// v1.5.57: Fixed directional buttons still moving the wrong way for
+//          device_open_state:true entities. v1.5.55 fixed enable/disable
+//          but missed that _callDirectional('close')/('open') was still
+//          wired to the top/bottom buttons by their old, pre-refactor
+//          labels - for a true entity that swap was always a no-op both
+//          before and after v1.5.55, so the actual service called never
+//          changed even though v1.5.54 had already made the icon
+//          positional. Top button and bottom button now each carry a
+//          single consistent identity throughout (class, disabled state,
+//          click handler, icon, aria-label) - top is permanently "open"
+//          (open_cover/retract/up), bottom permanently "close" (close_cover
+//          /extend/down). No swapping, no device_open_state, anywhere in
+//          this - reverted to plain semantic naming now that the concept
+//          really is fixed and unambiguous.
+// v1.5.56: The slider/buttons toggle now remembers your last choice across
+//          page reloads, per entity, per browser - via localStorage, not
+//          the card's own config (a config-side fix would change the
+//          toggle for everyone viewing the same dashboard, not just the
+//          person who clicked it). default_control is still what a
+//          browser with nothing stored yet falls back to.
 // v1.5.55: Fixed directional buttons moving the wrong way. open_cover/
 //          close_cover are fixed platform-wide HA services (current_position
 //          is always 0=closed/100=open, verified against HA's own docs) -
@@ -714,6 +734,17 @@ const DEFAULT_SHOW_CONTROL_SWITCH_BUTTONS = false;
 const DEFAULT_SHOW_FAVORITES = true;
 const DEFAULT_CONTROL = 'slider';
 const DEFAULT_FAVORITE_POSITIONS = [0, 25, 75, 100];
+
+// Remembers the user's last-picked slider/buttons toggle across page
+// reloads, per entity, per browser - via localStorage, not the card's own
+// config. Deliberately NOT written back to config: this is UI state for
+// the person currently looking at the dashboard, not a config change that
+// should apply to everyone viewing the same dashboard. Keyed by entity so
+// multiple chrono-slider-card instances don't collide.
+const TOGGLE_MODE_STORAGE_PREFIX = 'chrono-slider-card-control-';
+function cscToggleModeStorageKey(entityId) {
+  return `${TOGGLE_MODE_STORAGE_PREFIX}${entityId}`;
+}
 
 // The Opened/Closed state text switches at this distance (in raw HA
 // position points) from the closed extreme, rather than only at the
@@ -1555,7 +1586,15 @@ class ChronoSliderCard extends LitElement {
         ? config.default_control
         : DEFAULT_CONTROL;
 
-    this._toggleMode = this._defaultControl === 'buttons' ? 'button' : 'position';
+    let storedControl = null;
+    try {
+      storedControl = window.localStorage.getItem(cscToggleModeStorageKey(config.entity));
+    } catch (e) {
+      storedControl = null;
+    }
+    const effectiveControl =
+      storedControl === 'buttons' || storedControl === 'slider' ? storedControl : this._defaultControl;
+    this._toggleMode = effectiveControl === 'buttons' ? 'button' : 'position';
     this._dragging = false;
     this._dragValue = null;
 
@@ -1791,6 +1830,12 @@ class ChronoSliderCard extends LitElement {
 
   _setToggleMode(mode) {
     this._toggleMode = mode;
+    try {
+      window.localStorage.setItem(cscToggleModeStorageKey(this._config.entity), mode === 'button' ? 'buttons' : 'slider');
+    } catch (e) {
+      // localStorage unavailable (privacy mode, disabled, quota) - the
+      // toggle still works for this session, it just won't persist.
+    }
   }
 
   // ---- Render ----
@@ -1859,19 +1904,14 @@ class ChronoSliderCard extends LitElement {
     const closeDisabled = !cscCanOpenCover(entity, false);
     const stopDisabled = entity.state === UNAVAILABLE;
 
-    // Icon glyph matches whichever raw action actually fires when that
-    // button is pressed (computeOpenIcon/computeCloseIcon are glyph
-    // shapes for the native-open/native-close motion, independent of
-    // our labels).
-    // Icon selection is purely positional - top button (control-btn-close)
-    // always shows cscComputeOpenIcon's icon (up, or the horizontal-expand
-    // variant for awning/door/gate/curtain), bottom button (control-btn-
-    // open) always shows cscComputeCloseIcon's icon (down/collapse). No
-    // device_open_state involvement here - the visuals never change.
-    // device_open_state only affects which HA service a press calls (see
-    // _callDirectional's rawAction), never which icon is drawn.
-    const closeIconPath = cscComputeOpenIcon(entity);
-    const openIconPath = cscComputeCloseIcon(entity);
+    // Top button is permanently "open" (up icon, open_cover, targets raw
+    // 100/retract) and bottom is permanently "close" (down icon,
+    // close_cover, targets raw 0/extend) - fixed, unconditional, matching
+    // _callDirectional and openDisabled/closeDisabled (see there). No
+    // swap, no device_open_state involvement anywhere in this - it's a
+    // display-only concept (state text/percentage/slider fill).
+    const openIconPath = cscComputeOpenIcon(entity);
+    const closeIconPath = cscComputeCloseIcon(entity);
 
     const title = this._showName
       ? cscExpandEscapedNewlines(this._config.name || entity.attributes.friendly_name || this._config.entity)
@@ -1908,11 +1948,11 @@ class ChronoSliderCard extends LitElement {
             </div>
             <div class=${classMap({ 'control-button-group': true, active: this._toggleMode === 'button' })}>
               <button
-                class=${classMap({ 'control-btn': true, 'control-btn-close': true, disabled: closeDisabled })}
-                @click=${() => this._callDirectional('close')}
-                aria-label="Close"
+                class=${classMap({ 'control-btn': true, 'control-btn-open': true, disabled: openDisabled })}
+                @click=${() => this._callDirectional('open')}
+                aria-label="Open"
               >
-                <svg viewBox="0 0 24 24"><path d=${closeIconPath}></path></svg>
+                <svg viewBox="0 0 24 24"><path d=${openIconPath}></path></svg>
               </button>
               <button
                 class=${classMap({ 'control-btn': true, 'control-btn-stop': true, disabled: stopDisabled })}
@@ -1922,11 +1962,11 @@ class ChronoSliderCard extends LitElement {
                 <svg viewBox="0 0 24 24"><path d=${ICON_STOP}></path></svg>
               </button>
               <button
-                class=${classMap({ 'control-btn': true, 'control-btn-open': true, disabled: openDisabled })}
-                @click=${() => this._callDirectional('open')}
-                aria-label="Open"
+                class=${classMap({ 'control-btn': true, 'control-btn-close': true, disabled: closeDisabled })}
+                @click=${() => this._callDirectional('close')}
+                aria-label="Close"
               >
-                <svg viewBox="0 0 24 24"><path d=${openIconPath}></path></svg>
+                <svg viewBox="0 0 24 24"><path d=${closeIconPath}></path></svg>
               </button>
             </div>
           </div>
