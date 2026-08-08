@@ -17,9 +17,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.6.62';
+const CARD_VERSION = '1.7.63';
 
 // --- Version History ---------------------------------------------------------
+// v1.7.63: Fixed handle-margin drift - _valueFromEvent() used a fixed
+//          HANDLE_MARGIN_PX literal for drag math, which went stale
+//          whenever --slider-min-width/--slider-max-width were overridden
+//          via styles: (the CSS side already tracked them live since
+//          v1.6.61). Now reads both live at drag start instead. Also
+//          renamed _containerEl/_sliderEl/_tooltipEl to
+//          _sliderContainerElement/_sliderElement/_tooltipElement.
 // v1.6.62: Full CSS naming overhaul. Every remaining --ha-* theme-token
 //          reference replaced with our own named, literal-default variable
 //          (title/state/percentage/last-changed/controls/tooltip/icon-toggle/
@@ -112,9 +119,9 @@ const UNAVAILABLE = 'unavailable';
 // see connectedCallback(). Not tied to any config option.
 const RELATIVE_TIME_REFRESH_INTERVAL_MS = 30000;
 
-// These must match the CSS custom properties in static styles below:
-// --slider-max-width: 130px, --handle-margin: max(min-width, max-width)/8, --handle-size: 4px
-const HANDLE_MARGIN_PX = 130 / 8;
+// Must match .slider-container's --handle-size: 4px in static styles below
+// (a fixed literal, not exposed as an overridable variable the way
+// --slider-min-width/--slider-max-width are).
 const HANDLE_SIZE_PX = 4;
 
 // Device-type preset table. Each of the 3 device-behavior booleans is
@@ -1082,9 +1089,9 @@ class ChronoSliderCard extends LitElement {
   }
 
   firstUpdated() {
-    this._containerEl = this.renderRoot.querySelector('.slider-container');
-    this._sliderEl = this.renderRoot.querySelector('#slider');
-    this._tooltipEl = this.renderRoot.querySelector('.tooltip');
+    this._sliderContainerElement = this.renderRoot.querySelector('.slider-container');
+    this._sliderElement = this.renderRoot.querySelector('#slider');
+    this._tooltipElement = this.renderRoot.querySelector('.tooltip');
     // Appended after Lit's own static-style sheets (already present in
     // adoptedStyleSheets by this point) so both win cascade ties against
     // them, on any property, not just ones the built-in styles leave
@@ -1144,10 +1151,10 @@ class ChronoSliderCard extends LitElement {
   // element-ref source changed (Lit's renderRoot instead of a raw
   // shadowRoot built from an HTML string).
   _valueFromEvent(e) {
-    const rect = this._sliderEl.getBoundingClientRect();
-    const sliderSize = rect.height - 2 * HANDLE_MARGIN_PX - HANDLE_SIZE_PX;
+    const rect = this._sliderElement.getBoundingClientRect();
+    const sliderSize = rect.height - 2 * this._dragHandleMarginPx - HANDLE_SIZE_PX;
     const y = e.clientY - rect.top;
-    const value = ((y - HANDLE_MARGIN_PX - HANDLE_SIZE_PX / 2) / sliderSize) * 100;
+    const value = ((y - this._dragHandleMarginPx - HANDLE_SIZE_PX / 2) / sliderSize) * 100;
     return Math.max(0, Math.min(100, Math.round(value)));
   }
 
@@ -1158,21 +1165,29 @@ class ChronoSliderCard extends LitElement {
   // displayed percentage (via device_open_percentage).
   _paint(sliderValue) {
     const fraction = sliderValue / 100;
-    if (this._containerEl) this._containerEl.style.setProperty('--value', fraction.toString());
-    if (this._tooltipEl) {
+    if (this._sliderContainerElement) this._sliderContainerElement.style.setProperty('--value', fraction.toString());
+    if (this._tooltipElement) {
       // sliderValue is in slider-fill-space; convert to raw position via
       // device_open_slider, then to the displayed percentage via
       // device_open_percentage - two independent, single-step conversions.
       const rawPosition = this._sliderFraction(sliderValue);
-      this._tooltipEl.textContent = `${this._displayPercentage(rawPosition)}%`;
+      this._tooltipElement.textContent = `${this._displayPercentage(rawPosition)}%`;
     }
   }
 
   _onSliderPointerDown(e) {
     e.preventDefault();
     this._dragging = true;
-    this._containerEl?.classList.add('pressed');
-    this._tooltipEl?.classList.add('visible');
+    this._sliderContainerElement?.classList.add('pressed');
+    this._tooltipElement?.classList.add('visible');
+    // Read the live --slider-min-width/--slider-max-width once per drag (not
+    // per pointermove) and derive the handle margin the same way the CSS
+    // does (see .slider-container's --handle-margin, fixed in v1.6.61) - so
+    // drag math never goes stale if either is overridden via styles:.
+    const computedStyle = getComputedStyle(this._sliderContainerElement);
+    const minWidthPx = parseFloat(computedStyle.getPropertyValue('--slider-min-width'));
+    const maxWidthPx = parseFloat(computedStyle.getPropertyValue('--slider-max-width'));
+    this._dragHandleMarginPx = Math.max(minWidthPx, maxWidthPx) / 8;
     this._dragValue = this._valueFromEvent(e);
     this._paint(this._dragValue);
     this._boundPointerMove = this._boundPointerMove || ((ev) => this._onPointerMove(ev));
@@ -1191,8 +1206,8 @@ class ChronoSliderCard extends LitElement {
   _onPointerUp() {
     if (!this._dragging) return;
     this._dragging = false;
-    this._containerEl?.classList.remove('pressed');
-    this._tooltipEl?.classList.remove('visible');
+    this._sliderContainerElement?.classList.remove('pressed');
+    this._tooltipElement?.classList.remove('visible');
     this._teardownDragListeners();
     const value = this._dragValue;
     this._dragValue = null;
