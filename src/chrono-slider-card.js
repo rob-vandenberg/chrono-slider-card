@@ -17,9 +17,18 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.6.61';
+const CARD_VERSION = '1.6.62';
 
 // --- Version History ---------------------------------------------------------
+// v1.6.62: Full CSS naming overhaul. Every remaining --ha-* theme-token
+//          reference replaced with our own named, literal-default variable
+//          (title/state/percentage/last-changed/controls/tooltip/icon-toggle/
+//          control-button/favorite-button). control-btn renamed to
+//          control-button throughout for btn/button consistency. The three
+//          ::before overlay pseudo-elements (control button, icon-toggle,
+//          favorite button) replaced with real child elements
+//          (control-button-overlay, icon-toggle-overlay,
+//          favorite-button-overlay), making them addressable via styles:.
 // v1.6.61: --slider-thickness renamed to --slider-max-width, paired with new
 //          --slider-min-width (both now real, addressable variables instead
 //          of one variable + a hardcoded 80px literal). --handle-margin now
@@ -1363,24 +1372,27 @@ class ChronoSliderCard extends LitElement {
             </div>
             <div class=${classMap({ 'control-button-group': true, active: this._toggleMode === 'button' })}>
               <button
-                class=${classMap({ 'control-btn': true, 'control-btn-open': true, disabled: openDisabled })}
+                class=${classMap({ 'control-button': true, 'control-button-open': true, disabled: openDisabled })}
                 @click=${() => this._callDirectional('open')}
                 aria-label="Open"
               >
+                <div class="control-button-overlay"></div>
                 <svg viewBox="0 0 24 24"><path d=${openIconPath}></path></svg>
               </button>
               <button
-                class=${classMap({ 'control-btn': true, 'control-btn-stop': true, disabled: stopDisabled })}
+                class=${classMap({ 'control-button': true, 'control-button-stop': true, disabled: stopDisabled })}
                 @click=${() => this._stopCover()}
                 aria-label="Stop"
               >
+                <div class="control-button-overlay"></div>
                 <svg viewBox="0 0 24 24"><path d=${ICON_STOP}></path></svg>
               </button>
               <button
-                class=${classMap({ 'control-btn': true, 'control-btn-close': true, disabled: closeDisabled })}
+                class=${classMap({ 'control-button': true, 'control-button-close': true, disabled: closeDisabled })}
                 @click=${() => this._callDirectional('close')}
                 aria-label="Close"
               >
+                <div class="control-button-overlay"></div>
                 <svg viewBox="0 0 24 24"><path d=${closeIconPath}></path></svg>
               </button>
             </div>
@@ -1397,6 +1409,7 @@ class ChronoSliderCard extends LitElement {
                     @click=${() => this._setToggleMode('position')}
                     aria-label="Position mode"
                   >
+                    <div class="icon-toggle-overlay"></div>
                     <svg viewBox="0 0 24 24"><path d=${ICON_MENU}></path></svg>
                   </button>
                   <button
@@ -1408,6 +1421,7 @@ class ChronoSliderCard extends LitElement {
                     @click=${() => this._setToggleMode('button')}
                     aria-label="Button mode"
                   >
+                    <div class="icon-toggle-overlay"></div>
                     <svg viewBox="0 0 24 24"><path d=${ICON_SWAP_VERTICAL}></path></svg>
                   </button>
                 </div>
@@ -1428,7 +1442,10 @@ class ChronoSliderCard extends LitElement {
                       })}
                       @click=${() => this._applyFavorite(pos)}
                     >
-                      <div class="button-inner"><span class="button-label">${pos}%</span></div>
+                      <div class="button-inner">
+                        <div class="favorite-button-overlay"></div>
+                        <span class="button-label">${pos}%</span>
+                      </div>
                     </div>
                   `
                 )}
@@ -1456,10 +1473,10 @@ class ChronoSliderCard extends LitElement {
     .title {
       text-align: center;
       white-space: pre;
-      margin: 0 0 var(--ha-space-4, 16px) 0;
-      font-size: var(--ha-font-size-xl, 1.25rem);
-      line-height: var(--ha-line-height-condensed, 1.2);
-      font-weight: var(--ha-font-weight-medium, 500);
+      margin: 0 0 var(--title-margin-bottom, 16px) 0;
+      font-size: var(--title-font-size, 1.25rem);
+      line-height: var(--title-line-height, 1.2);
+      font-weight: var(--title-font-weight, 500);
       color: var(--primary-text-color);
     }
 
@@ -1476,25 +1493,25 @@ class ChronoSliderCard extends LitElement {
     }
     .state {
       font-style: normal;
-      font-weight: var(--ha-font-weight-normal, 400);
+      font-weight: var(--state-font-weight, 400);
       font-size: 32px;
-      line-height: var(--ha-line-height-condensed, 1.2);
+      line-height: var(--state-line-height, 1.2);
     }
     .percentage {
       font-style: normal;
-      font-size: var(--ha-font-size-l, 16px);
-      font-weight: var(--ha-font-weight-medium, 500);
-      line-height: var(--ha-line-height-normal, 1.5);
+      font-size: var(--percentage-font-size, 16px);
+      font-weight: var(--percentage-font-weight, 500);
+      line-height: var(--percentage-line-height, 1.5);
       letter-spacing: 0.1px;
-      padding: var(--ha-space-1, 4px) 0;
+      padding: var(--percentage-padding-y, 4px) 0;
     }
     .last-changed {
       font-style: normal;
-      font-size: var(--ha-font-size-l, 16px);
-      font-weight: var(--ha-font-weight-medium, 500);
-      line-height: var(--ha-line-height-normal, 1.5);
+      font-size: var(--last-changed-font-size, 16px);
+      font-weight: var(--last-changed-font-weight, 500);
+      line-height: var(--last-changed-line-height, 1.5);
       letter-spacing: 0.1px;
-      padding: var(--ha-space-1, 4px) 0;
+      padding: var(--last-changed-padding-y, 4px) 0;
     }
 
     /* ---- Controls layout ---- */
@@ -1505,13 +1522,13 @@ class ChronoSliderCard extends LitElement {
       justify-content: center;
       flex: 1;
       width: 100%;
-      margin-top: var(--ha-space-5, 20px);
+      margin-top: var(--controls-margin-top, 20px);
     }
     .controls:not(:last-child) {
-      margin-bottom: var(--ha-space-6, 24px);
+      margin-bottom: var(--controls-gap, 24px);
     }
     .controls > *:not(:last-child) {
-      margin-bottom: var(--ha-space-6, 24px);
+      margin-bottom: var(--controls-gap, 24px);
     }
     .main-control {
       display: flex;
@@ -1521,7 +1538,7 @@ class ChronoSliderCard extends LitElement {
       width: 100%;
     }
     .main-control > * {
-      margin: 0 var(--ha-space-2, 8px);
+      margin: 0 var(--main-control-item-margin, 8px);
     }
 
     /* ---- Directional button group (close/stop/open) ---- */
@@ -1539,13 +1556,13 @@ class ChronoSliderCard extends LitElement {
     .control-button-group > *:not(:last-child) {
       margin-bottom: 10px;
     }
-    .control-btn {
+    .control-button {
       position: relative;
       display: flex;
       flex: 1;
       align-items: center;
       justify-content: center;
-      border-radius: var(--ha-border-radius-6xl, 9999px);
+      border-radius: var(--control-button-border-radius, 9999px);
       overflow: hidden;
       cursor: pointer;
       color: var(--primary-text-color);
@@ -1555,8 +1572,7 @@ class ChronoSliderCard extends LitElement {
       background: none;
       font: inherit;
     }
-    .control-btn::before {
-      content: '';
+    .control-button-overlay {
       position: absolute;
       inset: 0;
       background-color: var(--disabled-color);
@@ -1564,21 +1580,21 @@ class ChronoSliderCard extends LitElement {
       transition: background-color 180ms ease-in-out, opacity 180ms ease-in-out;
       pointer-events: none;
     }
-    .control-btn svg {
+    .control-button svg {
       width: 24px;
       height: 24px;
       fill: currentColor;
       position: relative;
       z-index: 1;
     }
-    .control-btn:focus-visible {
+    .control-button:focus-visible {
       box-shadow: 0 0 0 2px var(--secondary-text-color);
     }
-    .control-btn.disabled {
+    .control-button.disabled {
       cursor: not-allowed;
       color: var(--disabled-text-color, #6f6f6f);
     }
-    .control-btn.disabled::before {
+    .control-button.disabled .control-button-overlay {
       opacity: 0.2;
     }
 
@@ -1590,7 +1606,7 @@ class ChronoSliderCard extends LitElement {
       --slider-background-opacity: 0.2;
       --slider-max-width: 130px;
       --slider-min-width: 80px;
-      --slider-border-radius: var(--ha-border-radius-6xl, 9999px);
+      --slider-border-radius: 9999px;
       height: 45vh;
       max-height: 320px;
       min-height: 200px;
@@ -1669,8 +1685,8 @@ class ChronoSliderCard extends LitElement {
       position: absolute;
       background-color: var(--clear-background-color, #212121);
       color: var(--primary-text-color);
-      font-size: var(--ha-font-size-xl, 20px);
-      border-radius: var(--ha-border-radius-lg, 12px);
+      font-size: var(--tooltip-font-size, 20px);
+      border-radius: var(--tooltip-border-radius, 12px);
       padding: 0.2em 0.4em;
       opacity: 0;
       white-space: nowrap;
@@ -1697,7 +1713,7 @@ class ChronoSliderCard extends LitElement {
       flex-direction: row;
       align-items: center;
       height: 48px;
-      border-radius: var(--ha-border-radius-4xl, 9999px);
+      border-radius: var(--icon-button-group-border-radius, 9999px);
       background-color: rgba(139, 145, 151, 0.1);
       box-sizing: border-box;
       width: auto;
@@ -1725,12 +1741,11 @@ class ChronoSliderCard extends LitElement {
       position: relative;
       z-index: 1;
     }
-    .icon-toggle-button::before {
-      content: '';
+    .icon-toggle-overlay {
       opacity: 0;
       transition: opacity 180ms ease-in-out;
       background-color: var(--primary-text-color);
-      border-radius: var(--ha-border-radius-2xl, 16px);
+      border-radius: var(--icon-toggle-border-radius, 16px);
       height: 40px;
       width: 40px;
       position: absolute;
@@ -1744,11 +1759,11 @@ class ChronoSliderCard extends LitElement {
     .icon-toggle-button.selected {
       color: var(--primary-background-color);
     }
-    .icon-toggle-button.selected::before {
+    .icon-toggle-button.selected .icon-toggle-overlay {
       opacity: 1;
     }
     @media (hover: hover) {
-      .icon-toggle-button:not(.selected):hover::before {
+      .icon-toggle-button:not(.selected):hover .icon-toggle-overlay {
         opacity: 0.1;
       }
     }
@@ -1788,13 +1803,13 @@ class ChronoSliderCard extends LitElement {
       text-align: center;
       width: 100%;
       height: 100%;
-      border-radius: var(--ha-border-radius-pill, 9999px);
+      border-radius: var(--favorite-button-border-radius, 9999px);
       border: none;
       margin: 0;
       padding: 8px;
       box-sizing: border-box;
-      font-family: var(--ha-font-family-body, inherit);
-      font-weight: var(--ha-font-weight-medium, 500);
+      font-family: var(--favorite-button-font-family, inherit);
+      font-weight: var(--favorite-button-font-weight, 500);
       font-size: inherit;
       outline: none;
       background: none;
@@ -1802,8 +1817,7 @@ class ChronoSliderCard extends LitElement {
       color: inherit;
       transition: box-shadow 180ms ease-in-out, color 180ms ease-in-out;
     }
-    .button-inner::before {
-      content: '';
+    .favorite-button-overlay {
       position: absolute;
       top: 0;
       left: 0;
@@ -1819,7 +1833,7 @@ class ChronoSliderCard extends LitElement {
       z-index: 1;
       opacity: 0.95;
     }
-    .favorite-button.active .button-inner::before {
+    .favorite-button.active .favorite-button-overlay {
       background-color: var(--state-cover-active-color, var(--primary-color));
     }
   `;
