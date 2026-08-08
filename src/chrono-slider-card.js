@@ -76,9 +76,12 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.5.58';
+const CARD_VERSION = '1.5.59';
 
 // --- Version History ---------------------------------------------------------
+// v1.5.59: Missing/not-found entity now shows HA's standard hui-warning box
+//          ("Entity not available: <entity_id>") instead of silently
+//          rendering nothing and collapsing to zero height.
 // v1.5.58: Removed legacy HA-native border-radius clamp on .slider-track-bar;
 //          now follows --slider-border-radius directly, matching .slider.
 // v1.5.57: Fixed directional buttons still moving the wrong way for
@@ -1842,7 +1845,10 @@ class ChronoSliderCard extends LitElement {
 
   // ---- Render ----
   render() {
-    if (!this._config || !this._entity) return html``;
+    if (!this._config) return html``;
+    if (!this._entity) {
+      return html`<hui-warning>Entity not available: ${this._config.entity}</hui-warning>`;
+    }
     const entity = this._entity;
     const value = this._currentValue();
     const sliderValue = this._currentSliderValue();
