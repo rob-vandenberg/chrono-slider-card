@@ -248,7 +248,7 @@ styles:
 | `--handle-size` | `slider_container` | `4px` | The thickness of the white handle bar. |
 | `--handle-margin` | `slider_container` | The larger of `--slider-min-width`/`--slider-max-width`, ÷ 8 | How far the handle sits from the top/bottom edge at each extreme. Set this directly to override the automatic width-based value. |
 | `--state-cover-inactive-color` | `control_slider_host` | The entity's own "open" reference color | Used behind the scenes for a closed device's muted color tone, matching Home Assistant's own theming convention. Most people won't need to touch this one. |
-| `--control-button-border-radius` | `control_button` | `9999px` | Corner rounding of each directional (open/stop/close) button. |
+| `--control-button-border-radius` | `control_button` | `36px` | Corner rounding of each directional (open/stop/close) button. |
 | `--control-button-padding` | `control_button` | `8px` | Padding inside each directional button, around its icon. |
 | `--disabled-text-color` | `control_button` | `#6f6f6f` | Icon color of a directional button while it's disabled. |
 | `--controls-gap` | `icon_button_group` | `20px` | Gap between the controls area and the slider/buttons toggle icons below it. |

@@ -17,9 +17,11 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.8.78';
+const CARD_VERSION = '1.8.79';
 
 // --- Version History ---------------------------------------------------------
+// v1.8.79: Default --control-button-border-radius changed from 9999px (full
+//          pill) to 36px.
 // v1.8.78: Reversed the order of the "Show controls" and "Show control
 //          switch buttons" toggles in the editor.
 // v1.8.77: Removed duplicate-value filtering from cscNormalizeFavoritePositions
@@ -1637,7 +1639,7 @@ class ChronoSliderCard extends LitElement {
       flex: 1;
       align-items: center;
       justify-content: center;
-      border-radius: var(--control-button-border-radius, 9999px);
+      border-radius: var(--control-button-border-radius, 36px);
       overflow: hidden;
       cursor: pointer;
       color: var(--primary-text-color);
