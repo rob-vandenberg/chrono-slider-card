@@ -17,9 +17,17 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.7.63';
+const CARD_VERSION = '1.7.64';
 
 // --- Version History ---------------------------------------------------------
+// v1.7.64: New show_controls option (default true) hides the entire .controls
+//          block (slider/directional buttons/mode-switch pill) while leaving
+//          state/percentage/last-changed and favorites visible - lets
+//          favorites alone (optionally styles: flex-direction: column'd into
+//          a vertical stack) serve as a third control mode. Moved the
+//          controls-to-favorites gap from .controls' bottom-margin to
+//          .favorites' own top-margin so the gap survives when .controls
+//          isn't rendered at all.
 // v1.7.63: Fixed handle-margin drift - _valueFromEvent() used a fixed
 //          HANDLE_MARGIN_PX literal for drag math, which went stale
 //          whenever --slider-min-width/--slider-max-width were overridden
@@ -159,6 +167,7 @@ const DEFAULT_SHOW_STATE = true;
 const DEFAULT_SHOW_LAST_CHANGED = true;
 const DEFAULT_SHOW_PERCENTAGE = true;
 const DEFAULT_SHOW_CONTROL_SWITCH_BUTTONS = false;
+const DEFAULT_SHOW_CONTROLS = true;
 const DEFAULT_SHOW_FAVORITES = true;
 const DEFAULT_CONTROL = 'slider';
 const DEFAULT_FAVORITE_POSITIONS = [0, 25, 75, 100];
@@ -922,6 +931,7 @@ class ChronoSliderCardEditor extends LitElement {
         (e) => this._toggleChanged('show_control_switch_buttons', e),
         'toggle-field-wide'
       )}
+      ${cscToggleField('Show controls', c.show_controls !== false, (e) => this._toggleChanged('show_controls', e), 'toggle-field-wide')}
       ${cscToggleField('Show favorites', c.show_favorites !== false, (e) => this._toggleChanged('show_favorites', e), 'toggle-field-wide')}
       ${cscTextField(
         'Favorite positions (comma-separated %)',
@@ -1007,6 +1017,8 @@ class ChronoSliderCard extends LitElement {
       config.show_control_switch_buttons !== undefined
         ? config.show_control_switch_buttons === true
         : DEFAULT_SHOW_CONTROL_SWITCH_BUTTONS;
+    this._showControls =
+      config.show_controls !== undefined ? config.show_controls === true : DEFAULT_SHOW_CONTROLS;
     this._showFavorites =
       config.show_favorites !== undefined ? config.show_favorites === true : DEFAULT_SHOW_FAVORITES;
     this._defaultControl =
@@ -1366,6 +1378,8 @@ class ChronoSliderCard extends LitElement {
           ${this._showLastChanged ? html`<p class="last-changed">${this._relativeTime ?? ''}</p>` : ''}
         </div>
 
+        ${this._showControls
+          ? html`
         <div class="controls">
           <div class="main-control">
             <div
@@ -1443,6 +1457,8 @@ class ChronoSliderCard extends LitElement {
               `
             : ''}
         </div>
+              `
+          : ''}
 
         ${this._showFavorites
           ? html`
@@ -1538,9 +1554,6 @@ class ChronoSliderCard extends LitElement {
       flex: 1;
       width: 100%;
       margin-top: var(--controls-margin-top, 20px);
-    }
-    .controls:not(:last-child) {
-      margin-bottom: var(--controls-gap, 24px);
     }
     .controls > *:not(:last-child) {
       margin-bottom: var(--controls-gap, 24px);
@@ -1793,6 +1806,7 @@ class ChronoSliderCard extends LitElement {
       width: 100%;
       max-width: 384px;
       margin: -8px;
+      margin-top: var(--controls-gap, 24px);
       user-select: none;
     }
     .favorites > * {
