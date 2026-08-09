@@ -64,7 +64,7 @@ Switch between the position slider and simple open/stop/close buttons, either as
 Set any number of one-tap favorite positions - not just open and closed. The default set is 0%, 25%, 75%, and 100%, fully customizable.
 
 ### 👁️ Show or Hide Anything
-Turn off the name, the state text, the percentage, the relative-time label, the favorites row, or the slider/buttons toggle. Build the exact card you want.
+Turn off the name, the state text, the percentage, the relative-time label, the favorites row, the slider/buttons toggle, or the entire controls area (slider, buttons, and toggle together) for a favorites-only layout. Build the exact card you want.
 
 ### 🎨 Custom CSS, From YAML
 Every element on the card - card, title, state, buttons, slider, favorites, and more - can be restyled directly from your dashboard config with a `styles:` block. A handful of built-in CSS variables also let you change one thing - like the slider's color or corner rounding - and have it apply everywhere it's used, in a single edit. No editing the card's source, no browser dev tools required.
@@ -142,6 +142,7 @@ show_name: true
 show_state: true
 show_percentage: true
 show_last_changed: true
+show_controls: true
 show_control_switch_buttons: false
 show_favorites: true
 default_control: slider
@@ -164,6 +165,7 @@ favorite_positions:
 | `show_state` | `true`/`false` | `true` | Shows the "Opened"/"Closed"/"Opening"/"Closing" text. |
 | `show_percentage` | `true`/`false` | `true` | Shows the position percentage under the state text. |
 | `show_last_changed` | `true`/`false` | `true` | Shows the relative-time label under the state text (e.g. "3 hours ago"). |
+| `show_controls` | `true`/`false` | `true` | Shows the entire controls area - the slider, directional buttons, and the slider/buttons switch toggle - together. Turn off to show only favorites (and any name/state/percentage/last-changed) - useful for a favorites-only layout. |
 | `show_control_switch_buttons` | `true`/`false` | `false` | Shows the toggle icons that switch the card between the slider and the open/stop/close buttons. |
 | `show_favorites` | `true`/`false` | `true` | Shows the row of favorite-position buttons. |
 | `default_control` | `slider`/`buttons` | `slider` | Which control is shown by default when the card loads. Matches the "Control" field in the editor. |
@@ -191,7 +193,7 @@ styles:
     border_radius: 4px
 ```
 
-The class names match exactly what you'd find inspecting the card with your browser's dev tools (underscores instead of dashes). A handful of the most useful ones: `ha_card`, `title`, `state`, `percentage`, `last_changed`, `control_slider_host`, `slider_container`, `slider`, `handle`, `control_button_group`, `control_btn`, `icon_button_group`, `icon_toggle_button`, `favorites`, `favorite_button`.
+The class names match exactly what you'd find inspecting the card with your browser's dev tools (underscores instead of dashes). A handful of the most useful ones: `ha_card`, `title`, `state`, `percentage`, `last_changed`, `control_slider_host`, `slider_container`, `slider`, `handle`, `main_control`, `control_button_group`, `control_button`, `icon_button_group`, `icon_toggle_button`, `tooltip`, `favorites`, `favorite_button`.
 
 One key is special: `host` targets the card's own outer element (not a class) - use it to change things like the card's outer margin.
 
@@ -201,13 +203,13 @@ styles:
     margin: 0
 ```
 
-Some elements exist as more than one instance on the card - the three directional buttons, the two mode-toggle buttons, and the favorite-position buttons. Styling their shared class (e.g. `control_btn`, `icon_toggle_button`, `favorite_button`) changes all of them at once. To style just one, use its own specific class instead: `control_btn_close` / `control_btn_stop` / `control_btn_open` for the directional buttons, `icon_toggle_button_position` / `icon_toggle_button_button` for the mode-toggle buttons, and `favorite_button_<value>` (e.g. `favorite_button_30`) for an individual favorite position.
+Some elements exist as more than one instance on the card - the three directional buttons, the two mode-toggle buttons, and the favorite-position buttons. Styling their shared class (e.g. `control_button`, `icon_toggle_button`, `favorite_button`) changes all of them at once. To style just one, use its own specific class instead: `control_button_close` / `control_button_stop` / `control_button_open` for the directional buttons, `icon_toggle_button_position` / `icon_toggle_button_button` for the mode-toggle buttons, and `favorite_button_<value>` (e.g. `favorite_button_30`) for an individual favorite position.
 
 There's no validation on `styles:` - any class name and any CSS property is accepted and applied exactly as written, even if it doesn't match anything on the card or doesn't make visual sense. This gives you full control, but also means a typo will silently do nothing rather than warn you.
 
 #### Built-in CSS variables
 
-A regular property override only affects the one class you targeted. The slider also exposes a handful of CSS variables that drive several parts of the card at once - change the variable in one place, and every part of the card that uses it updates together. Set these the same way, under the `control_slider_host` or `slider_container` class (see the table below for which one), written with quotes since they start with `--`:
+A regular property override only affects the one class you targeted. On top of that, the card exposes its own full set of CSS variables covering fonts, spacing, colors, and corner rounding across every part of the card, each with a sensible default. Set these the same way, under whichever class the table below lists for it, written with quotes since they start with `--`:
 
 ```yaml
 styles:
@@ -218,14 +220,49 @@ styles:
 
 | Variable | Set it under | Default | What it changes |
 | :--- | :--- | :--- | :--- |
+| `--title-font-size` | `title` | `20px` | Font size of the name shown above the card. |
+| `--title-font-weight` | `title` | `500` | Font weight of the name. |
+| `--title-line-height` | `title` | `1.2` | Line height of the name. |
+| `--title-margin-bottom` | `title` | `16px` | Gap between the name and the content below it. |
+| `--state-font-weight` | `state` | `400` | Font weight of the Opened/Closed/Opening/Closing text. |
+| `--state-line-height` | `state` | `1.2` | Line height of the state text. |
+| `--state-padding-y` | `state` | `4px` | Vertical padding above/below the state text. |
+| `--percentage-font-size` | `percentage` | `16px` | Font size of the position percentage. |
+| `--percentage-font-weight` | `percentage` | `500` | Font weight of the position percentage. |
+| `--percentage-line-height` | `percentage` | `1.5` | Line height of the position percentage. |
+| `--percentage-padding-y` | `percentage` | `4px` | Vertical padding above/below the percentage. |
+| `--last-changed-font-size` | `last_changed` | `16px` | Font size of the relative-time label (e.g. "3 hours ago"). |
+| `--last-changed-font-weight` | `last_changed` | `500` | Font weight of the relative-time label. |
+| `--last-changed-line-height` | `last_changed` | `1.5` | Line height of the relative-time label. |
+| `--last-changed-padding-y` | `last_changed` | `4px` | Vertical padding above/below the relative-time label. |
+| `--controls-margin-top` | `controls` | `16px` | Gap above the controls area (slider/buttons). |
+| `--controls-margin-bottom` | `controls` | `8px` | Gap below the controls area, above whatever section comes next. |
+| `--main-control-item-margin` | `main_control` | `8px` | Horizontal spacing between the slider and the directional-button group. |
 | `--slider-color` | `control_slider_host` | The entity's current state color | The color of the filled part of the slider, and the focus outline shown when the slider is selected with a keyboard. |
 | `--slider-background` | `control_slider_host` | The entity's current state color, dimmed | The color of the empty (unfilled) part of the slider track. |
 | `--slider-background-opacity` | `control_slider_host` | `0.2` | How dim the empty part of the track is. `1` removes the dimming entirely, `0` makes it invisible. |
-| `--slider-thickness` | `control_slider_host` | `130px` | The width of the slider. Also sets how far the handle can travel from the top and bottom edges (see `--handle-margin`). |
-| `--slider-border-radius` | `control_slider_host` | `9999px` (a full pill shape) | How rounded the slider's corners are. Also caps how rounded the filled bar's own corners can be. |
+| `--slider-min-width` | `control_slider_host` | `80px` | The narrowest the slider is allowed to shrink to. |
+| `--slider-max-width` | `control_slider_host` | `130px` | The widest the slider is allowed to grow to. Together with `--slider-min-width`, also sets how far the handle can travel from the top and bottom edges (see `--handle-margin`). |
+| `--slider-border-radius` | `control_slider_host` | `36px` | How rounded the slider's own outer corners are. |
+| `--slider-track-bar-border-radius` | `control_slider_host` | `8px` | How rounded the corners of the filled bar inside the slider are. Kept independent of `--slider-border-radius` so the fill doesn't distort into a flattened dome shape at low percentages. |
 | `--handle-size` | `slider_container` | `4px` | The thickness of the white handle bar. |
-| `--handle-margin` | `slider_container` | Slider thickness ÷ 8 | How far the handle sits from the top/bottom edge at each extreme. Set this directly to override the automatic thickness-based value. |
+| `--handle-margin` | `slider_container` | The larger of `--slider-min-width`/`--slider-max-width`, ÷ 8 | How far the handle sits from the top/bottom edge at each extreme. Set this directly to override the automatic width-based value. |
 | `--state-cover-inactive-color` | `control_slider_host` | The entity's own "open" reference color | Used behind the scenes for a closed device's muted color tone, matching Home Assistant's own theming convention. Most people won't need to touch this one. |
+| `--control-button-border-radius` | `control_button` | `9999px` | Corner rounding of each directional (open/stop/close) button. |
+| `--control-button-padding` | `control_button` | `8px` | Padding inside each directional button, around its icon. |
+| `--disabled-text-color` | `control_button` | `#6f6f6f` | Icon color of a directional button while it's disabled. |
+| `--controls-gap` | `icon_button_group` | `20px` | Gap between the controls area and the slider/buttons toggle icons below it. |
+| `--icon-button-group-border-radius` | `icon_button_group` | `9999px` | Corner rounding of the slider/buttons toggle pill. |
+| `--icon-toggle-border-radius` | `icon_toggle_button` | `9999px` | Corner rounding of the highlight behind the currently-selected toggle icon. |
+| `--favorites-gap` | `favorites` | `16px` | Gap above the favorites row. |
+| `--favorites-margin-bottom` | `favorites` | `8px` | Gap below the favorites row. |
+| `--favorite-button-border-radius` | `favorite_button` | `9999px` | Corner rounding of each favorite-position button. |
+| `--favorite-button-font-family` | `favorite_button` | Inherited from the card | Font family of the favorite-position button labels. |
+| `--favorite-button-font-weight` | `favorite_button` | `500` | Font weight of the favorite-position button labels. |
+| `--state-cover-active-color` | `favorite_button` | `--primary-color` | Highlight color of the favorite-position button matching the entity's current position. |
+| `--tooltip-font-size` | `tooltip` | `20px` | Font size of the percentage tooltip shown while dragging the slider. |
+| `--tooltip-border-radius` | `tooltip` | `12px` | Corner rounding of the drag tooltip. |
+| `--clear-background-color` | `tooltip` | `#212121` | Background color of the drag tooltip. |
 
 ---
 
