@@ -17,9 +17,30 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.7.64';
+const CARD_VERSION = '1.7.69';
 
 // --- Version History ---------------------------------------------------------
+// v1.7.69: ha-card padding reverted to uniform 16px on all sides - the extra
+//          bottom padding introduced in v1.7.67/68 was too much.
+// v1.7.68: ha-card padding switched from shorthand+longhand to a single
+//          4-value shorthand (functionally identical specificity either way -
+//          user preference for readability). Bottom value 24px -> 20px.
+// v1.7.67: Moved the trailing bottom gap from .favorites' own margin (which
+//          only worked when favorites happened to be the last rendered
+//          child) to ha-card's own padding-bottom (24px, 8px more than the
+//          16px top/left/right) - now correct regardless of which optional
+//          section ends up last. Reverted .favorites to the v1.7.65 margin
+//          shorthand.
+// v1.7.66: Fixed last favorite-button row sitting flush against the card's
+//          bottom padding - .favorites' bottom margin was canceling the last
+//          row's own 8px margin along with right/left (originally correct,
+//          since .controls used to sit below and own that gap). Stopped
+//          canceling bottom specifically so the 8px shows through as the
+//          intended breathing room, matching the top gap.
+// v1.7.65: Fixed favorites top-gap being 8px too large when show_controls is
+//          off - .favorites' own margin-top didn't account for its first
+//          child's un-canceled 8px top margin (flex item margins don't
+//          collapse with the container). Now cancels it via calc().
 // v1.7.64: New show_controls option (default true) hides the entire .controls
 //          block (slider/directional buttons/mode-switch pill) while leaving
 //          state/percentage/last-changed and favorites visible - lets
@@ -1806,7 +1827,7 @@ class ChronoSliderCard extends LitElement {
       width: 100%;
       max-width: 384px;
       margin: -8px;
-      margin-top: var(--controls-gap, 24px);
+      margin-top: calc(var(--controls-gap, 24px) - 8px);
       user-select: none;
     }
     .favorites > * {
