@@ -17,9 +17,30 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.7.69';
+const CARD_VERSION = '1.7.76';
 
 // --- Version History ---------------------------------------------------------
+// v1.7.76: Added padding (--state-padding-y, 4px default) to .state, matching
+//          the existing pattern on .percentage and .last-changed.
+// v1.7.75: .title font-size default changed from 1.25rem to literal 20px.
+// v1.7.74: Added overridable margin-bottom (--favorites-margin-bottom, 8px
+//          default) to .favorites. ha-card padding changed to explicit
+//          16px 8px 8px 8px.
+// v1.7.73: Added overridable margin-bottom (--controls-margin-bottom, 8px
+//          default) to .controls.
+// v1.7.72: Default --slider-track-bar-border-radius fallback changed from
+//          12px to 8px.
+// v1.7.71: Default --slider-border-radius changed from 9999px (full pill) to
+//          36px.
+// v1.7.70: Fixed distorted dome/ellipse artifact on .slider-track-bar at low
+//          fill values - it was following the outer .slider's
+//          --slider-border-radius (9999px), but since the track-bar is
+//          always full-height and merely translated into view, that radius
+//          collapsed a small visible sliver into a flattened dome. Now has
+//          its own independent --slider-track-bar-border-radius (12px
+//          default). Also gave .favorites its own --favorites-gap instead of
+//          incorrectly reusing --controls-gap (.favorites isn't part of
+//          .controls).
 // v1.7.69: ha-card padding reverted to uniform 16px on all sides - the extra
 //          bottom padding introduced in v1.7.67/68 was too much.
 // v1.7.68: ha-card padding switched from shorthand+longhand to a single
@@ -1515,7 +1536,7 @@ class ChronoSliderCard extends LitElement {
     }
     ha-card {
       box-sizing: border-box;
-      padding: 16px;
+      padding: 16px 8px 8px 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1526,7 +1547,7 @@ class ChronoSliderCard extends LitElement {
       text-align: center;
       white-space: pre;
       margin: 0 0 var(--title-margin-bottom, 16px) 0;
-      font-size: var(--title-font-size, 1.25rem);
+      font-size: var(--title-font-size, 20px);
       line-height: var(--title-line-height, 1.2);
       font-weight: var(--title-font-weight, 500);
       color: var(--primary-text-color);
@@ -1548,6 +1569,7 @@ class ChronoSliderCard extends LitElement {
       font-weight: var(--state-font-weight, 400);
       font-size: 32px;
       line-height: var(--state-line-height, 1.2);
+      padding: var(--state-padding-y, 4px) 0;
     }
     .percentage {
       font-style: normal;
@@ -1574,10 +1596,8 @@ class ChronoSliderCard extends LitElement {
       justify-content: center;
       flex: 1;
       width: 100%;
-      margin-top: var(--controls-margin-top, 20px);
-    }
-    .controls > *:not(:last-child) {
-      margin-bottom: var(--controls-gap, 24px);
+      margin-top: var(--controls-margin-top, 16px);
+      margin-bottom: var(--controls-margin-bottom, 8px);
     }
     .main-control {
       display: flex;
@@ -1655,7 +1675,7 @@ class ChronoSliderCard extends LitElement {
       --slider-background-opacity: 0.2;
       --slider-max-width: 130px;
       --slider-min-width: 80px;
-      --slider-border-radius: 9999px;
+      --slider-border-radius: 36px;
       height: 45vh;
       max-height: 320px;
       min-height: 200px;
@@ -1708,7 +1728,7 @@ class ChronoSliderCard extends LitElement {
     .slider-track-bar {
       top: 0;
       left: 0;
-      border-radius: var(--slider-border-radius);
+      border-radius: var(--slider-track-bar-border-radius, 8px);
       /* Fill grows top-down as value increases, so the visible boundary
          moves the same direction as the drag (down = more open). */
       transform: translate3d(0, calc((var(--value, 0) - 1) * var(--slider-size)), 0);
@@ -1762,6 +1782,7 @@ class ChronoSliderCard extends LitElement {
       flex-direction: row;
       align-items: center;
       height: 48px;
+      margin-top: var(--controls-gap, 20px);
       border-radius: var(--icon-button-group-border-radius, 9999px);
       background-color: rgba(139, 145, 151, 0.1);
       box-sizing: border-box;
@@ -1794,7 +1815,7 @@ class ChronoSliderCard extends LitElement {
       opacity: 0;
       transition: opacity 180ms ease-in-out;
       background-color: var(--primary-text-color);
-      border-radius: var(--icon-toggle-border-radius, 16px);
+      border-radius: var(--icon-toggle-border-radius, 9999px);
       height: 40px;
       width: 40px;
       position: absolute;
@@ -1826,12 +1847,10 @@ class ChronoSliderCard extends LitElement {
       flex-wrap: wrap;
       width: 100%;
       max-width: 384px;
-      margin: -8px;
-      margin-top: calc(var(--controls-gap, 24px) - 8px);
+      gap: 16px;
+      margin-top: var(--favorites-gap, 16px);
+      margin-bottom: var(--favorites-margin-bottom, 8px);
       user-select: none;
-    }
-    .favorites > * {
-      margin: 8px;
     }
     .favorite-button {
       display: block;
