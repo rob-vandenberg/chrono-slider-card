@@ -17,9 +17,11 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.8.77';
+const CARD_VERSION = '1.8.78';
 
 // --- Version History ---------------------------------------------------------
+// v1.8.78: Reversed the order of the "Show controls" and "Show control
+//          switch buttons" toggles in the editor.
 // v1.8.77: Removed duplicate-value filtering from cscNormalizeFavoritePositions
 //          (editor's Favorite positions field). It was deduping by numeric
 //          value on every keystroke, which could silently drop an
@@ -971,13 +973,13 @@ class ChronoSliderCardEditor extends LitElement {
       ${cscToggleField('Show last changed', c.show_last_changed !== false, (e) =>
         this._toggleChanged('show_last_changed', e), 'toggle-field-wide'
       )}
+      ${cscToggleField('Show controls', c.show_controls !== false, (e) => this._toggleChanged('show_controls', e), 'toggle-field-wide')}
       ${cscToggleField(
         'Show control switch buttons',
         c.show_control_switch_buttons === true,
         (e) => this._toggleChanged('show_control_switch_buttons', e),
         'toggle-field-wide'
       )}
-      ${cscToggleField('Show controls', c.show_controls !== false, (e) => this._toggleChanged('show_controls', e), 'toggle-field-wide')}
       ${cscToggleField('Show favorites', c.show_favorites !== false, (e) => this._toggleChanged('show_favorites', e), 'toggle-field-wide')}
       ${cscTextField(
         'Favorite positions (comma-separated %)',
