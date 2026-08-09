@@ -17,9 +17,19 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.8.79';
+const CARD_VERSION = '1.8.80';
 
 // --- Version History ---------------------------------------------------------
+// v1.8.80: Favorite positions editor field no longer parses/clamps on every
+//          keystroke - it now stores the raw typed string as-is in config,
+//          so the field is never fed a transformed value while the user is
+//          typing (removes the whole class of live-reformat bugs, not just
+//          the duplicate/out-of-range cases fixed in v1.8.77). Parsing and
+//          clamping now happen only where the value is actually consumed
+//          (cscNormalizeFavoritePositions, used by both the live editor
+//          preview and the real card), which now accepts a comma-separated
+//          string as well as an array, for backward compatibility with
+//          configs saved before this change.
 // v1.8.79: Default --control-button-border-radius changed from 9999px (full
 //          pill) to 36px.
 // v1.8.78: Reversed the order of the "Show controls" and "Show control
@@ -361,8 +371,12 @@ function cscStateColorCssCover(entityState, deviceClass, forcedState) {
 
 function cscNormalizeFavoritePositions(positions) {
   if (!positions) return [];
+  const tokens =
+    typeof positions === 'string'
+      ? positions.split(',').map((s) => s.trim()).filter((s) => s !== '')
+      : positions;
   const normalized = [];
-  for (const position of positions) {
+  for (const position of tokens) {
     const value = Number(position);
     if (isNaN(value)) continue;
     const clamped = Math.max(0, Math.min(100, value));
@@ -849,12 +863,7 @@ class ChronoSliderCardEditor extends LitElement {
 
   _favoritePositionsChanged(e) {
     if (!this._config) return;
-    const raw = e.target.value ?? '';
-    const parsed = raw
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s !== '');
-    this._config = { ...this._config, favorite_positions: cscNormalizeFavoritePositions(parsed) };
+    this._config = { ...this._config, favorite_positions: e.target.value ?? '' };
     this._emit();
   }
 
@@ -985,7 +994,7 @@ class ChronoSliderCardEditor extends LitElement {
       ${cscToggleField('Show favorites', c.show_favorites !== false, (e) => this._toggleChanged('show_favorites', e), 'toggle-field-wide')}
       ${cscTextField(
         'Favorite positions (comma-separated %)',
-        (c.favorite_positions ?? []).join(', '),
+        Array.isArray(c.favorite_positions) ? c.favorite_positions.join(', ') : (c.favorite_positions ?? ''),
         (e) => this._favoritePositionsChanged(e)
       )}
     `;
