@@ -17,9 +17,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.7.76';
+const CARD_VERSION = '1.8.77';
 
 // --- Version History ---------------------------------------------------------
+// v1.8.77: Removed duplicate-value filtering from cscNormalizeFavoritePositions
+//          (editor's Favorite positions field). It was deduping by numeric
+//          value on every keystroke, which could silently drop an
+//          in-progress value that matched an earlier one in the list (e.g.
+//          typing "100" after an existing "10" collapsed to "10" mid-type,
+//          truncating the field and jumping the cursor). Duplicates are now
+//          allowed - the user may enter the same position more than once.
 // v1.7.76: Added padding (--state-padding-y, 4px default) to .state, matching
 //          the existing pattern on .percentage and .last-changed.
 // v1.7.75: .title font-size default changed from 1.25rem to literal 20px.
@@ -350,14 +357,11 @@ function cscStateColorCssCover(entityState, deviceClass, forcedState) {
 
 function cscNormalizeFavoritePositions(positions) {
   if (!positions) return [];
-  const unique = new Set();
   const normalized = [];
   for (const position of positions) {
     const value = Number(position);
     if (isNaN(value)) continue;
     const clamped = Math.max(0, Math.min(100, value));
-    if (unique.has(clamped)) continue;
-    unique.add(clamped);
     normalized.push(clamped);
   }
   return normalized;
