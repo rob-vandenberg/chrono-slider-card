@@ -216,13 +216,19 @@ styles:
 
 | Variable | Set it under | Default | What it changes |
 | :--- | :--- | :--- | :--- |
+| `--host-margin` | `host` | `8px` | Outer margin around the whole card. |
+| `--ha-card-padding` | `ha-card` | `16px 8px 8px 8px` | Inner padding of the card. |
+| `--transition-duration` | `ha-card` | `180ms` | Duration of the fade/slide/color transitions used throughout the card (overlays, slider fill, tooltip, favorite buttons, etc). |
+| `--focus-ring-width` | `ha-card` | `2px` | Thickness of the keyboard focus outline on the slider and directional buttons. |
 | `--title-font-size` | `title` | `20px` | Font size of the name shown above the card. |
 | `--title-font-weight` | `title` | `500` | Font weight of the name. |
 | `--title-line-height` | `title` | `1.2` | Line height of the name. |
 | `--title-margin-bottom` | `title` | `16px` | Gap between the name and the content below it. |
+| `--state-font-size` | `state` | `32px` | Font size of the Opened/Closed/Opening/Closing text. |
 | `--state-font-weight` | `state` | `400` | Font weight of the Opened/Closed/Opening/Closing text. |
 | `--state-line-height` | `state` | `1.2` | Line height of the state text. |
 | `--state-padding-y` | `state` | `4px` | Vertical padding above/below the state text. |
+| `--label-letter-spacing` | `percentage` or `last-changed` | `0.1px` | Letter spacing of the percentage and relative-time labels (shared by both). |
 | `--percentage-font-size` | `percentage` | `16px` | Font size of the position percentage. |
 | `--percentage-font-weight` | `percentage` | `500` | Font weight of the position percentage. |
 | `--percentage-line-height` | `percentage` | `1.5` | Line height of the position percentage. |
@@ -233,6 +239,11 @@ styles:
 | `--last-changed-padding-y` | `last-changed` | `4px` | Vertical padding above/below the relative-time label. |
 | `--controls-margin-top` | `controls` | `16px` | Gap above the controls area (slider/buttons). |
 | `--controls-margin-bottom` | `controls` | `8px` | Gap below the controls area, above whatever section comes next. |
+| `--controls-height` | `control-slider-host` or `control-button-group` | `45vh` | Height of the active control (slider or directional buttons). Shared between both, so they stay the same size regardless of which is showing. |
+| `--controls-max-height` | `control-slider-host` or `control-button-group` | `320px` | Maximum height of the active control. |
+| `--controls-min-height` | `control-slider-host` or `control-button-group` | `200px` | Minimum height of the active control. |
+| `--control-button-group-width` | `control-button-group` | `100px` | Width of the directional-button column. |
+| `--control-button-group-item-gap` | `control-button-group` | `10px` | Vertical spacing between the three directional buttons. |
 | `--main-control-item-margin` | `main-control` | `8px` | Horizontal spacing between the slider and the directional-button group. |
 | `--slider-color` | `control-slider-host` | The entity's current state color | The color of the filled part of the slider, and the focus outline shown when the slider is selected with a keyboard. |
 | `--slider-background` | `control-slider-host` | The entity's current state color, dimmed | The color of the empty (unfilled) part of the slider track. |
@@ -242,22 +253,40 @@ styles:
 | `--slider-border-radius` | `control-slider-host` | `36px` | How rounded the slider's own outer corners are. |
 | `--slider-track-bar-border-radius` | `control-slider-host` | `8px` | How rounded the corners of the filled bar inside the slider are. Kept independent of `--slider-border-radius` so the fill doesn't distort into a flattened dome shape at low percentages. |
 | `--handle-size` | `slider-container` | `4px` | The thickness of the white handle bar. |
+| `--handle-color` | `slider-container` | `white` | The color of the handle bar. |
 | `--handle-margin` | `slider-container` | The larger of `--slider-min-width`/`--slider-max-width`, ÷ 8 | How far the handle sits from the top/bottom edge at each extreme. Set this directly to override the automatic width-based value. |
 | `--state-cover-inactive-color` | `control-slider-host` | The entity's own "open" reference color | Used behind the scenes for a closed device's muted color tone, matching Home Assistant's own theming convention. Most people won't need to touch this one. |
 | `--control-button-border-radius` | `control-button` | `36px` | Corner rounding of each directional (open/stop/close) button. |
 | `--control-button-padding` | `control-button` | `8px` | Padding inside each directional button, around its icon. |
+| `--overlay-opacity` | `control-button` or `favorite-button` | `0.2` | Opacity of the dim overlay shown on disabled directional buttons and inactive favorite buttons. Shared across both. |
+| `--button-icon-size` | `control-button` or `icon-toggle-button` | `24px` | Size of the icon inside a directional button or a mode-toggle icon. Shared across both. |
 | `--disabled-text-color` | `control-button` | `#6f6f6f` | Icon color of a directional button while it's disabled. |
 | `--controls-gap` | `icon-button-group` | `20px` | Gap between the controls area and the slider/buttons toggle icons below it. |
 | `--icon-button-group-border-radius` | `icon-button-group` | `9999px` | Corner rounding of the slider/buttons toggle pill. |
+| `--icon-button-group-background` | `icon-button-group` | `rgba(139, 145, 151, 0.1)` | Background fill color of the toggle pill. |
+| `--icon-button-group-height` | `icon-button-group` | `48px` | Height of the toggle pill. |
+| `--icon-toggle-button-size` | `icon-toggle-button` | `40px` | Size of each mode-toggle icon button, and its selection highlight. |
+| `--icon-toggle-button-gap` | `icon-toggle-button` | `4px` | Spacing around each mode-toggle icon button. |
 | `--icon-toggle-border-radius` | `icon-toggle-button` | `9999px` | Corner rounding of the highlight behind the currently-selected toggle icon. |
+| `--icon-toggle-overlay-expand` | `icon-toggle-button` | `-10px` | How far the selection highlight extends beyond the icon itself on each side. |
+| `--icon-toggle-hover-opacity` | `icon-toggle-button` | `0.1` | Opacity of the highlight shown when hovering an unselected toggle icon. |
 | `--favorites-gap` | `favorites` | `16px` | Gap above the favorites row. |
 | `--favorites-margin-bottom` | `favorites` | `8px` | Gap below the favorites row. |
+| `--favorite-button-gap` | `favorites` | `16px` | Gap between individual favorite-position buttons within the row. |
+| `--favorites-max-width` | `favorites` | `384px` | Maximum width of the favorites row before buttons wrap to a new line. |
+| `--favorite-button-width` | `favorite-button` | `72px` | Width of each favorite-position button. |
+| `--favorite-button-height` | `favorite-button` | `36px` | Height of each favorite-position button. |
+| `--favorite-button-padding` | `favorite-button` | `8px` | Inner padding of each favorite-position button. |
 | `--favorite-button-border-radius` | `favorite-button` | `9999px` | Corner rounding of each favorite-position button. |
 | `--favorite-button-font-family` | `favorite-button` | Inherited from the card | Font family of the favorite-position button labels. |
 | `--favorite-button-font-weight` | `favorite-button` | `500` | Font weight of the favorite-position button labels. |
+| `--favorite-button-label-opacity` | `favorite-button` | `0.95` | Opacity of the favorite-position button labels. |
 | `--state-cover-active-color` | `favorite-button` | `--primary-color` | Highlight color of the favorite-position button matching the entity's current position. |
 | `--tooltip-font-size` | `tooltip` | `20px` | Font size of the percentage tooltip shown while dragging the slider. |
 | `--tooltip-border-radius` | `tooltip` | `12px` | Corner rounding of the drag tooltip. |
+| `--tooltip-padding` | `tooltip` | `0.2em 0.4em` | Inner padding of the drag tooltip. |
+| `--tooltip-shadow` | `tooltip` | `0 2px 5px rgba(0, 0, 0, 0.2)` | Drop shadow of the drag tooltip. |
+| `--tooltip-offset` | `tooltip` | `-4px` | Horizontal offset of the drag tooltip from the slider's edge. |
 | `--clear-background-color` | `tooltip` | `#212121` | Background color of the drag tooltip. |
 
 ---
