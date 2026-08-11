@@ -17,9 +17,38 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.8.80';
+const CARD_VERSION = '1.8.81';
 
 // --- Version History ---------------------------------------------------------
+// v1.8.81: Full audit of the main card's static styles for hardcoded literals
+//          that should have been CSS variables, triggered by --state-font-size
+//          being missing while its sibling properties on .state were already
+//          var-ified. Found and fixed 16 more instances of the same pattern -
+//          new variables added: --host-margin, --ha-card-padding,
+//          --state-font-size, --label-letter-spacing (shared by .percentage/
+//          .last-changed), --controls-height/--controls-max-height/
+//          --controls-min-height (now shared between .control-button-group
+//          and .control-slider-host, which previously duplicated the same
+//          three literals with zero var coverage on the button-group side),
+//          --control-button-group-width, --control-button-group-item-gap,
+//          --overlay-opacity (shared by all three 0.2 dim-overlay instances),
+//          --button-icon-size (shared by both 24px svg icon sizes),
+//          --transition-duration (shared by all eight 180ms transitions),
+//          --focus-ring-width (shared by both 2px focus rings), --handle-color
+//          (the only remaining hardcoded color in the file), --tooltip-padding,
+//          --tooltip-shadow, --tooltip-offset, --icon-button-group-background,
+//          --icon-button-group-height, --icon-toggle-button-size,
+//          --icon-toggle-button-gap, --icon-toggle-overlay-expand,
+//          --icon-toggle-hover-opacity, --favorite-button-gap,
+//          --favorites-max-width, --favorite-button-width,
+//          --favorite-button-height, --favorite-button-padding,
+//          --favorite-button-label-opacity. Also added HANDLE_MARGIN_DIVISOR
+//          as a named constant, replacing a bare "/ 8" in the drag-math
+//          calculation that silently duplicated the CSS handle-margin
+//          formula's divisor - same bug class as the HANDLE_MARGIN_PX issue
+//          fixed earlier. Editor-only styling was explicitly out of scope for
+//          this pass (styles: only ever reaches the main card, never the
+//          editor). README not yet updated with these new variables.
 // v1.8.80: Favorite positions editor field no longer parses/clamps on every
 //          keystroke - it now stores the raw typed string as-is in config,
 //          so the field is never fed a transformed value while the user is
@@ -194,6 +223,9 @@ const RELATIVE_TIME_REFRESH_INTERVAL_MS = 30000;
 // (a fixed literal, not exposed as an overridable variable the way
 // --slider-min-width/--slider-max-width are).
 const HANDLE_SIZE_PX = 4;
+// Divisor used to derive the slider's handle margin from its width - must
+// match the divisor in .slider-container's --handle-margin CSS formula.
+const HANDLE_MARGIN_DIVISOR = 8;
 
 // Device-type preset table. Each of the 3 device-behavior booleans is
 // defined relative to the device being fully retracted (raw HA
@@ -1258,7 +1290,7 @@ class ChronoSliderCard extends LitElement {
     const computedStyle = getComputedStyle(this._sliderContainerElement);
     const minWidthPx = parseFloat(computedStyle.getPropertyValue('--slider-min-width'));
     const maxWidthPx = parseFloat(computedStyle.getPropertyValue('--slider-max-width'));
-    this._dragHandleMarginPx = Math.max(minWidthPx, maxWidthPx) / 8;
+    this._dragHandleMarginPx = Math.max(minWidthPx, maxWidthPx) / HANDLE_MARGIN_DIVISOR;
     this._dragValue = this._valueFromEvent(e);
     this._paint(this._dragValue);
     this._boundPointerMove = this._boundPointerMove || ((ev) => this._onPointerMove(ev));
@@ -1549,11 +1581,11 @@ class ChronoSliderCard extends LitElement {
   static styles = css`
     :host {
       display: block;
-      margin: 8px;
+      margin: var(--host-margin, 8px);
     }
     ha-card {
       box-sizing: border-box;
-      padding: 16px 8px 8px 8px;
+      padding: var(--ha-card-padding, 16px 8px 8px 8px);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1584,7 +1616,7 @@ class ChronoSliderCard extends LitElement {
     .state {
       font-style: normal;
       font-weight: var(--state-font-weight, 400);
-      font-size: 32px;
+      font-size: var(--state-font-size, 32px);
       line-height: var(--state-line-height, 1.2);
       padding: var(--state-padding-y, 4px) 0;
     }
@@ -1593,7 +1625,7 @@ class ChronoSliderCard extends LitElement {
       font-size: var(--percentage-font-size, 16px);
       font-weight: var(--percentage-font-weight, 500);
       line-height: var(--percentage-line-height, 1.5);
-      letter-spacing: 0.1px;
+      letter-spacing: var(--label-letter-spacing, 0.1px);
       padding: var(--percentage-padding-y, 4px) 0;
     }
     .last-changed {
@@ -1601,7 +1633,7 @@ class ChronoSliderCard extends LitElement {
       font-size: var(--last-changed-font-size, 16px);
       font-weight: var(--last-changed-font-weight, 500);
       line-height: var(--last-changed-line-height, 1.5);
-      letter-spacing: 0.1px;
+      letter-spacing: var(--label-letter-spacing, 0.1px);
       padding: var(--last-changed-padding-y, 4px) 0;
     }
 
@@ -1629,10 +1661,10 @@ class ChronoSliderCard extends LitElement {
 
     /* ---- Directional button group (close/stop/open) ---- */
     .control-button-group {
-      height: 45vh;
-      max-height: 320px;
-      min-height: 200px;
-      width: 100px;
+      height: var(--controls-height, 45vh);
+      max-height: var(--controls-max-height, 320px);
+      min-height: var(--controls-min-height, 200px);
+      width: var(--control-button-group-width, 100px);
       display: none;
       flex-direction: column;
     }
@@ -1640,7 +1672,7 @@ class ChronoSliderCard extends LitElement {
       display: flex;
     }
     .control-button-group > *:not(:last-child) {
-      margin-bottom: 10px;
+      margin-bottom: var(--control-button-group-item-gap, 10px);
     }
     .control-button {
       position: relative;
@@ -1662,26 +1694,26 @@ class ChronoSliderCard extends LitElement {
       position: absolute;
       inset: 0;
       background-color: var(--disabled-color);
-      opacity: 0.2;
-      transition: background-color 180ms ease-in-out, opacity 180ms ease-in-out;
+      opacity: var(--overlay-opacity, 0.2);
+      transition: background-color var(--transition-duration, 180ms) ease-in-out, opacity var(--transition-duration, 180ms) ease-in-out;
       pointer-events: none;
     }
     .control-button svg {
-      width: 24px;
-      height: 24px;
+      width: var(--button-icon-size, 24px);
+      height: var(--button-icon-size, 24px);
       fill: currentColor;
       position: relative;
       z-index: 1;
     }
     .control-button:focus-visible {
-      box-shadow: 0 0 0 2px var(--secondary-text-color);
+      box-shadow: 0 0 0 var(--focus-ring-width, 2px) var(--secondary-text-color);
     }
     .control-button.disabled {
       cursor: not-allowed;
       color: var(--disabled-text-color, #6f6f6f);
     }
     .control-button.disabled .control-button-overlay {
-      opacity: 0.2;
+      opacity: var(--overlay-opacity, 0.2);
     }
 
     /* ---- Slider ---- */
@@ -1693,9 +1725,9 @@ class ChronoSliderCard extends LitElement {
       --slider-max-width: 130px;
       --slider-min-width: 80px;
       --slider-border-radius: 36px;
-      height: 45vh;
-      max-height: 320px;
-      min-height: 200px;
+      height: var(--controls-height, 45vh);
+      max-height: var(--controls-max-height, 320px);
+      min-height: var(--controls-min-height, 200px);
       width: 100%;
       min-width: var(--slider-min-width);
       max-width: var(--slider-max-width);
@@ -1716,14 +1748,14 @@ class ChronoSliderCard extends LitElement {
       width: 100%;
       border-radius: var(--slider-border-radius);
       transform: translateZ(0);
-      transition: box-shadow 180ms ease-in-out;
+      transition: box-shadow var(--transition-duration, 180ms) ease-in-out;
       outline: none;
       overflow: hidden;
       cursor: pointer;
       touch-action: none;
     }
     .slider:focus-visible {
-      box-shadow: 0 0 0 2px var(--slider-color);
+      box-shadow: 0 0 0 var(--focus-ring-width, 2px) var(--slider-color);
     }
     .slider-track-background {
       position: absolute;
@@ -1740,7 +1772,7 @@ class ChronoSliderCard extends LitElement {
       height: 100%;
       width: 100%;
       background-color: var(--slider-color);
-      transition: transform 180ms ease-in-out, background-color 180ms ease-in-out;
+      transition: transform var(--transition-duration, 180ms) ease-in-out, background-color var(--transition-duration, 180ms) ease-in-out;
     }
     .slider-track-bar {
       top: 0;
@@ -1754,7 +1786,7 @@ class ChronoSliderCard extends LitElement {
       position: absolute;
       margin: auto;
       border-radius: var(--handle-size);
-      background-color: white;
+      background-color: var(--handle-color, white);
       bottom: var(--handle-margin);
       top: initial;
       right: 0;
@@ -1773,12 +1805,12 @@ class ChronoSliderCard extends LitElement {
       color: var(--primary-text-color);
       font-size: var(--tooltip-font-size, 20px);
       border-radius: var(--tooltip-border-radius, 12px);
-      padding: 0.2em 0.4em;
+      padding: var(--tooltip-padding, 0.2em 0.4em);
       opacity: 0;
       white-space: nowrap;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-      transition: opacity 180ms ease-in-out, top 180ms ease-in-out;
-      left: -4px;
+      box-shadow: var(--tooltip-shadow, 0 2px 5px rgba(0, 0, 0, 0.2));
+      transition: opacity var(--transition-duration, 180ms) ease-in-out, top var(--transition-duration, 180ms) ease-in-out;
+      left: var(--tooltip-offset, -4px);
       transform: translate3d(-100%, -50%, 0);
       --handle-spacing: calc(2 * var(--handle-margin) + var(--handle-size));
       --slider-tooltip-range: calc(100% - var(--handle-spacing));
@@ -1798,10 +1830,10 @@ class ChronoSliderCard extends LitElement {
       display: flex;
       flex-direction: row;
       align-items: center;
-      height: 48px;
+      height: var(--icon-button-group-height, 48px);
       margin-top: var(--controls-gap, 20px);
       border-radius: var(--icon-button-group-border-radius, 9999px);
-      background-color: rgba(139, 145, 151, 0.1);
+      background-color: var(--icon-button-group-background, rgba(139, 145, 151, 0.1));
       box-sizing: border-box;
       width: auto;
       padding: 0;
@@ -1811,9 +1843,9 @@ class ChronoSliderCard extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 40px;
-      height: 40px;
-      margin: 4px;
+      width: var(--icon-toggle-button-size, 40px);
+      height: var(--icon-toggle-button-size, 40px);
+      margin: var(--icon-toggle-button-gap, 4px);
       border: none;
       background: none;
       padding: 0;
@@ -1822,24 +1854,24 @@ class ChronoSliderCard extends LitElement {
       -webkit-tap-highlight-color: transparent;
     }
     .icon-toggle-button svg {
-      width: 24px;
-      height: 24px;
+      width: var(--button-icon-size, 24px);
+      height: var(--button-icon-size, 24px);
       fill: currentColor;
       position: relative;
       z-index: 1;
     }
     .icon-toggle-overlay {
       opacity: 0;
-      transition: opacity 180ms ease-in-out;
+      transition: opacity var(--transition-duration, 180ms) ease-in-out;
       background-color: var(--primary-text-color);
       border-radius: var(--icon-toggle-border-radius, 9999px);
-      height: 40px;
-      width: 40px;
+      height: var(--icon-toggle-button-size, 40px);
+      width: var(--icon-toggle-button-size, 40px);
       position: absolute;
-      top: -10px;
-      left: -10px;
-      bottom: -10px;
-      right: -10px;
+      top: var(--icon-toggle-overlay-expand, -10px);
+      left: var(--icon-toggle-overlay-expand, -10px);
+      bottom: var(--icon-toggle-overlay-expand, -10px);
+      right: var(--icon-toggle-overlay-expand, -10px);
       margin: auto;
       box-sizing: border-box;
     }
@@ -1851,7 +1883,7 @@ class ChronoSliderCard extends LitElement {
     }
     @media (hover: hover) {
       .icon-toggle-button:not(.selected):hover .icon-toggle-overlay {
-        opacity: 0.1;
+        opacity: var(--icon-toggle-hover-opacity, 0.1);
       }
     }
 
@@ -1863,8 +1895,8 @@ class ChronoSliderCard extends LitElement {
       justify-content: center;
       flex-wrap: wrap;
       width: 100%;
-      max-width: 384px;
-      gap: 16px;
+      max-width: var(--favorites-max-width, 384px);
+      gap: var(--favorite-button-gap, 16px);
       margin-top: var(--favorites-gap, 16px);
       margin-bottom: var(--favorites-margin-bottom, 8px);
       user-select: none;
@@ -1872,8 +1904,8 @@ class ChronoSliderCard extends LitElement {
     .favorite-button {
       display: block;
       position: relative;
-      width: 72px;
-      height: 36px;
+      width: var(--favorite-button-width, 72px);
+      height: var(--favorite-button-height, 36px);
       box-sizing: border-box;
       color: var(--primary-text-color);
       -webkit-tap-highlight-color: transparent;
@@ -1892,7 +1924,7 @@ class ChronoSliderCard extends LitElement {
       border-radius: var(--favorite-button-border-radius, 9999px);
       border: none;
       margin: 0;
-      padding: 8px;
+      padding: var(--favorite-button-padding, 8px);
       box-sizing: border-box;
       font-family: var(--favorite-button-font-family, inherit);
       font-weight: var(--favorite-button-font-weight, 500);
@@ -1901,7 +1933,7 @@ class ChronoSliderCard extends LitElement {
       background: none;
       z-index: 0;
       color: inherit;
-      transition: box-shadow 180ms ease-in-out, color 180ms ease-in-out;
+      transition: box-shadow var(--transition-duration, 180ms) ease-in-out, color var(--transition-duration, 180ms) ease-in-out;
     }
     .favorite-button-overlay {
       position: absolute;
@@ -1910,14 +1942,14 @@ class ChronoSliderCard extends LitElement {
       height: 100%;
       width: 100%;
       background-color: var(--disabled-color);
-      transition: background-color 180ms ease-in-out, opacity 180ms ease-in-out;
-      opacity: 0.2;
+      transition: background-color var(--transition-duration, 180ms) ease-in-out, opacity var(--transition-duration, 180ms) ease-in-out;
+      opacity: var(--overlay-opacity, 0.2);
       pointer-events: none;
     }
     .button-label {
       position: relative;
       z-index: 1;
-      opacity: 0.95;
+      opacity: var(--favorite-button-label-opacity, 0.95);
     }
     .favorite-button.active .favorite-button-overlay {
       background-color: var(--state-cover-active-color, var(--primary-color));
