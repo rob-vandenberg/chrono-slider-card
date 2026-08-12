@@ -218,7 +218,7 @@ styles:
 | :--- | :--- | :--- | :--- |
 | `--host-margin` | `host` | `8px` | Outer margin around the whole card. |
 | `--ha-card-padding` | `ha-card` | `16px 8px 8px 8px` | Inner padding of the card. |
-| `--transition-duration` | `ha-card` | `180ms` | Duration of the fade/slide/color transitions used throughout the card (overlays, slider fill, tooltip, favorite buttons, etc). |
+| `--transition-duration` | `ha-card` | `180ms` | Duration of the fade/slide/color transitions used throughout the card (shades, slider fill, tooltip, favorite buttons, etc). |
 | `--focus-ring-width` | `ha-card` | `2px` | Thickness of the keyboard focus outline on the slider and directional buttons. |
 | `--title-font-size` | `title` | `20px` | Font size of the name shown above the card. |
 | `--title-font-weight` | `title` | `500` | Font weight of the name. |
@@ -258,7 +258,7 @@ styles:
 | `--state-cover-inactive-color` | `control-slider-host` | The entity's own "open" reference color | Used behind the scenes for a closed device's muted color tone, matching Home Assistant's own theming convention. Most people won't need to touch this one. |
 | `--control-button-border-radius` | `control-button` | `36px` | Corner rounding of each directional (open/stop/close) button. |
 | `--control-button-padding` | `control-button` | `8px` | Padding inside each directional button, around its icon. |
-| `--overlay-opacity` | `control-button` or `favorite-button` | `0.2` | Opacity of the dim overlay shown on disabled directional buttons and inactive favorite buttons. Shared across both. |
+| `--overlay-opacity` | `control-button` or `favorite-button` | `0.2` | Opacity of the dim shade shown on disabled directional buttons and inactive favorite buttons. Shared across both. |
 | `--button-icon-size` | `control-button` or `icon-toggle-button` | `24px` | Size of the icon inside a directional button or a mode-toggle icon. Shared across both. |
 | `--disabled-text-color` | `control-button` | `#6f6f6f` | Icon color of a directional button while it's disabled. |
 | `--controls-gap` | `icon-button-group` | `20px` | Gap between the controls area and the slider/buttons toggle icons below it. |
@@ -268,7 +268,7 @@ styles:
 | `--icon-toggle-button-size` | `icon-toggle-button` | `40px` | Size of each mode-toggle icon button, and its selection highlight. |
 | `--icon-toggle-button-gap` | `icon-toggle-button` | `4px` | Spacing around each mode-toggle icon button. |
 | `--icon-toggle-border-radius` | `icon-toggle-button` | `9999px` | Corner rounding of the highlight behind the currently-selected toggle icon. |
-| `--icon-toggle-overlay-expand` | `icon-toggle-button` | `-10px` | How far the selection highlight extends beyond the icon itself on each side. |
+| `--icon-toggle-shade-expand` | `icon-toggle-button` | `-10px` | How far the selection highlight extends beyond the icon itself on each side. |
 | `--icon-toggle-hover-opacity` | `icon-toggle-button` | `0.1` | Opacity of the highlight shown when hovering an unselected toggle icon. |
 | `--favorites-gap` | `favorites` | `16px` | Gap above the favorites row. |
 | `--favorites-margin-bottom` | `favorites` | `8px` | Gap below the favorites row. |

@@ -17,9 +17,18 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.9.90';
+const CARD_VERSION = '1.9.91';
 
 // --- Version History ---------------------------------------------------------
+// v1.9.91: Renamed .control-button-overlay to .control-button-shade and
+//          .icon-toggle-overlay to .icon-toggle-shade (plus its
+//          --icon-toggle-overlay-expand variable, now
+//          --icon-toggle-shade-expand) - same reasoning as the v1.9.90
+//          favorite-button-shade rename: "overlay" implied sitting on top
+//          of and obscuring content, when these layers actually sit behind
+//          the icon as a translucent state-color tint. No structural
+//          change - both .control-button and .icon-toggle-button were
+//          already flat (no wrapper div to remove), unlike favorite-button.
 // v1.9.90: Removed the redundant .button-inner wrapper div from the favorite
 //          buttons - every declaration it carried (overflow, flex-centering,
 //          border-radius, padding, font, background:none, the box-shadow/
@@ -1509,7 +1518,7 @@ class ChronoSliderCard extends LitElement {
                 @click=${() => this._callDirectional('open')}
                 aria-label="Open"
               >
-                <div class="control-button-overlay"></div>
+                <div class="control-button-shade"></div>
                 <svg viewBox="0 0 24 24"><path d=${openIconPath}></path></svg>
               </button>
               <button
@@ -1517,7 +1526,7 @@ class ChronoSliderCard extends LitElement {
                 @click=${() => this._stopCover()}
                 aria-label="Stop"
               >
-                <div class="control-button-overlay"></div>
+                <div class="control-button-shade"></div>
                 <svg viewBox="0 0 24 24"><path d=${ICON_STOP}></path></svg>
               </button>
               <button
@@ -1525,7 +1534,7 @@ class ChronoSliderCard extends LitElement {
                 @click=${() => this._callDirectional('close')}
                 aria-label="Close"
               >
-                <div class="control-button-overlay"></div>
+                <div class="control-button-shade"></div>
                 <svg viewBox="0 0 24 24"><path d=${closeIconPath}></path></svg>
               </button>
             </div>
@@ -1542,7 +1551,7 @@ class ChronoSliderCard extends LitElement {
                     @click=${() => this._setToggleMode('position')}
                     aria-label="Position mode"
                   >
-                    <div class="icon-toggle-overlay"></div>
+                    <div class="icon-toggle-shade"></div>
                     <svg viewBox="0 0 24 24"><path d=${ICON_MENU}></path></svg>
                   </button>
                   <button
@@ -1554,7 +1563,7 @@ class ChronoSliderCard extends LitElement {
                     @click=${() => this._setToggleMode('button')}
                     aria-label="Button mode"
                   >
-                    <div class="icon-toggle-overlay"></div>
+                    <div class="icon-toggle-shade"></div>
                     <svg viewBox="0 0 24 24"><path d=${ICON_SWAP_VERTICAL}></path></svg>
                   </button>
                 </div>
@@ -1701,7 +1710,7 @@ class ChronoSliderCard extends LitElement {
       background: none;
       font: inherit;
     }
-    .control-button-overlay {
+    .control-button-shade {
       position: absolute;
       inset: 0;
       background-color: var(--disabled-color);
@@ -1723,7 +1732,7 @@ class ChronoSliderCard extends LitElement {
       cursor: not-allowed;
       color: var(--disabled-text-color, #6f6f6f);
     }
-    .control-button.disabled .control-button-overlay {
+    .control-button.disabled .control-button-shade {
       opacity: var(--overlay-opacity, 0.2);
     }
 
@@ -1871,7 +1880,7 @@ class ChronoSliderCard extends LitElement {
       position: relative;
       z-index: 1;
     }
-    .icon-toggle-overlay {
+    .icon-toggle-shade {
       opacity: 0;
       transition: opacity var(--transition-duration, 180ms) ease-in-out;
       background-color: var(--primary-text-color);
@@ -1879,21 +1888,21 @@ class ChronoSliderCard extends LitElement {
       height: var(--icon-toggle-button-size, 40px);
       width: var(--icon-toggle-button-size, 40px);
       position: absolute;
-      top: var(--icon-toggle-overlay-expand, -10px);
-      left: var(--icon-toggle-overlay-expand, -10px);
-      bottom: var(--icon-toggle-overlay-expand, -10px);
-      right: var(--icon-toggle-overlay-expand, -10px);
+      top: var(--icon-toggle-shade-expand, -10px);
+      left: var(--icon-toggle-shade-expand, -10px);
+      bottom: var(--icon-toggle-shade-expand, -10px);
+      right: var(--icon-toggle-shade-expand, -10px);
       margin: auto;
       box-sizing: border-box;
     }
     .icon-toggle-button.selected {
       color: var(--primary-background-color);
     }
-    .icon-toggle-button.selected .icon-toggle-overlay {
+    .icon-toggle-button.selected .icon-toggle-shade {
       opacity: 1;
     }
     @media (hover: hover) {
-      .icon-toggle-button:not(.selected):hover .icon-toggle-overlay {
+      .icon-toggle-button:not(.selected):hover .icon-toggle-shade {
         opacity: var(--icon-toggle-hover-opacity, 0.1);
       }
     }
