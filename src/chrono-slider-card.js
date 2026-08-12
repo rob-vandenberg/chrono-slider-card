@@ -17,9 +17,22 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.8.81';
+const CARD_VERSION = '1.9.90';
 
 // --- Version History ---------------------------------------------------------
+// v1.9.90: Removed the redundant .button-inner wrapper div from the favorite
+//          buttons - every declaration it carried (overflow, flex-centering,
+//          border-radius, padding, font, background:none, the box-shadow/
+//          color transition) merged directly onto .favorite-button, matching
+//          the flatter pattern .control-button already used elsewhere in
+//          this file. .favorite-button-overlay renamed to
+//          .favorite-button-shade (both the class and its .active variant) -
+//          "overlay" implied it sits on top of and obscures content, when it
+//          actually sits behind the label as a translucent state-color
+//          layer; "shade" was chosen as clearer and more accurate. Dropped
+//          the redundant z-index:0 that lived on the old .button-inner - the
+//          label's explicit z-index:1 already stacks above the shade's
+//          default z-index:auto regardless.
 // v1.8.81: Full audit of the main card's static styles for hardcoded literals
 //          that should have been CSS variables, triggered by --state-font-size
 //          being missing while its sibling properties on .state were already
@@ -1564,10 +1577,8 @@ class ChronoSliderCard extends LitElement {
                       })}
                       @click=${() => this._applyFavorite(pos)}
                     >
-                      <div class="button-inner">
-                        <div class="favorite-button-overlay"></div>
-                        <span class="button-label">${pos}%</span>
-                      </div>
+                      <div class="favorite-button-shade"></div>
+                      <span class="button-label">${pos}%</span>
                     </div>
                   `
                 )}
@@ -1902,16 +1913,6 @@ class ChronoSliderCard extends LitElement {
       user-select: none;
     }
     .favorite-button {
-      display: block;
-      position: relative;
-      width: var(--favorite-button-width, 72px);
-      height: var(--favorite-button-height, 36px);
-      box-sizing: border-box;
-      color: var(--primary-text-color);
-      -webkit-tap-highlight-color: transparent;
-      cursor: pointer;
-    }
-    .button-inner {
       overflow: hidden;
       position: relative;
       display: flex;
@@ -1919,23 +1920,24 @@ class ChronoSliderCard extends LitElement {
       align-items: center;
       justify-content: center;
       text-align: center;
-      width: 100%;
-      height: 100%;
-      border-radius: var(--favorite-button-border-radius, 9999px);
+      width: var(--favorite-button-width, 72px);
+      height: var(--favorite-button-height, 36px);
+      box-sizing: border-box;
       border: none;
+      border-radius: var(--favorite-button-border-radius, 9999px);
       margin: 0;
       padding: var(--favorite-button-padding, 8px);
-      box-sizing: border-box;
       font-family: var(--favorite-button-font-family, inherit);
       font-weight: var(--favorite-button-font-weight, 500);
       font-size: inherit;
       outline: none;
       background: none;
-      z-index: 0;
-      color: inherit;
+      color: var(--primary-text-color);
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
       transition: box-shadow var(--transition-duration, 180ms) ease-in-out, color var(--transition-duration, 180ms) ease-in-out;
     }
-    .favorite-button-overlay {
+    .favorite-button-shade {
       position: absolute;
       top: 0;
       left: 0;
@@ -1951,7 +1953,7 @@ class ChronoSliderCard extends LitElement {
       z-index: 1;
       opacity: var(--favorite-button-label-opacity, 0.95);
     }
-    .favorite-button.active .favorite-button-overlay {
+    .favorite-button.active .favorite-button-shade {
       background-color: var(--state-cover-active-color, var(--primary-color));
     }
   `;
