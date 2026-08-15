@@ -17,9 +17,26 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.9.92';
+const CARD_VERSION = '2.0.100';
 
 // --- Version History ---------------------------------------------------------
+// v2.0.100: Harmonized width handling across all four sizeable controls
+//          (slider, control-button-group, icon-button-group, favorite-
+//          button) to the same mechanism the slider already used:
+//          width: 100% clamped between a min-width and a max-width, each
+//          its own CSS variable. control-button-group and favorite-button
+//          previously had a single fixed-width variable each
+//          (--control-button-group-width, --favorite-button-width) with no
+//          authored minimum - any shrinking below that fixed value was an
+//          unintentional side effect of default flexbox content-minimum
+//          behavior, not a deliberate design. icon-button-group previously
+//          used width: auto (sized tightly to its two icons) rather than
+//          filling available space at all. All three now use
+//          --*-min-width/--*-max-width pairs, defaulting to 54px/100px -
+//          54px matches Home Assistant's own measured convention for this
+//          kind of control, not an arbitrary guess. Retired
+//          --control-button-group-width and --favorite-button-width as
+//          variable names (replaced, not kept as aliases).
 // v1.9.92: Favorite positions now support optional custom labels via
 //          {value:label} syntax (e.g. "{0:Close}, 25, 75, {100:Open}"),
 //          alongside plain numbers which behave exactly as before.
@@ -1711,7 +1728,9 @@ class ChronoSliderCard extends LitElement {
       height: var(--controls-height, 45vh);
       max-height: var(--controls-max-height, 320px);
       min-height: var(--controls-min-height, 200px);
-      width: var(--control-button-group-width, 100px);
+      width: 100%;
+      min-width: var(--control-button-group-min-width, 54px);
+      max-width: var(--control-button-group-max-width, 100px);
       display: none;
       flex-direction: column;
     }
@@ -1882,7 +1901,9 @@ class ChronoSliderCard extends LitElement {
       border-radius: var(--icon-button-group-border-radius, 9999px);
       background-color: var(--icon-button-group-background, rgba(139, 145, 151, 0.1));
       box-sizing: border-box;
-      width: auto;
+      width: 100%;
+      min-width: var(--icon-button-group-min-width, 54px);
+      max-width: var(--icon-button-group-max-width, 96px);
       padding: 0;
     }
     .icon-toggle-button {
@@ -1956,7 +1977,9 @@ class ChronoSliderCard extends LitElement {
       align-items: center;
       justify-content: center;
       text-align: center;
-      width: var(--favorite-button-width, 90px);
+      width: 100%;
+      min-width: var(--favorite-button-min-width, 54px);
+      max-width: var(--favorite-button-max-width, 96px);
       height: var(--favorite-button-height, 36px);
       box-sizing: border-box;
       border: none;
