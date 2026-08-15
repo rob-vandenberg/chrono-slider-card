@@ -24,6 +24,7 @@ screenshot/
 release/
 github/
 thermostat/
+ha/ 
 
 # Files
 *.ai
