@@ -17,9 +17,19 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '1.9.91';
+const CARD_VERSION = '1.9.92';
 
 // --- Version History ---------------------------------------------------------
+// v1.9.92: Favorite positions now support optional custom labels via
+//          {value:label} syntax (e.g. "{0:Close}, 25, 75, {100:Open}"),
+//          alongside plain numbers which behave exactly as before.
+//          cscNormalizeFavoritePositions now returns an array of
+//          { value, label } objects instead of plain numbers - value drives
+//          the button's class, active-state comparison, and service call
+//          exactly as the old plain number did; label is what's displayed
+//          (literal, as-typed, for custom labels; "N%" for plain entries).
+//          Widened --favorite-button-width default from 72px to 90px to
+//          give longer custom labels room to breathe.
 // v1.9.91: Renamed .control-button-overlay to .control-button-shade and
 //          .icon-toggle-overlay to .icon-toggle-shade (plus its
 //          --icon-toggle-overlay-expand variable, now
@@ -430,11 +440,28 @@ function cscNormalizeFavoritePositions(positions) {
       ? positions.split(',').map((s) => s.trim()).filter((s) => s !== '')
       : positions;
   const normalized = [];
-  for (const position of tokens) {
-    const value = Number(position);
+  for (const token of tokens) {
+    if (typeof token === 'object' && token !== null) {
+      // Already-normalized entry (e.g. passed in programmatically).
+      const value = Number(token.value);
+      if (isNaN(value)) continue;
+      const clamped = Math.max(0, Math.min(100, value));
+      normalized.push({ value: clamped, label: token.label ?? `${clamped}%` });
+      continue;
+    }
+    const braced = /^\{(.+):(.+)\}$/.exec(String(token).trim());
+    if (braced) {
+      const value = Number(braced[1].trim());
+      const label = braced[2].trim();
+      if (isNaN(value) || label === '') continue;
+      const clamped = Math.max(0, Math.min(100, value));
+      normalized.push({ value: clamped, label });
+      continue;
+    }
+    const value = Number(token);
     if (isNaN(value)) continue;
     const clamped = Math.max(0, Math.min(100, value));
-    normalized.push(clamped);
+    normalized.push({ value: clamped, label: `${clamped}%` });
   }
   return normalized;
 }
@@ -1047,7 +1074,7 @@ class ChronoSliderCardEditor extends LitElement {
       )}
       ${cscToggleField('Show favorites', c.show_favorites !== false, (e) => this._toggleChanged('show_favorites', e), 'toggle-field-wide')}
       ${cscTextField(
-        'Favorite positions (comma-separated %)',
+        'Favorite positions (comma-separated %, or {value:label})',
         Array.isArray(c.favorite_positions) ? c.favorite_positions.join(', ') : (c.favorite_positions ?? ''),
         (e) => this._favoritePositionsChanged(e)
       )}
@@ -1577,17 +1604,17 @@ class ChronoSliderCard extends LitElement {
           ? html`
               <section class="favorites">
                 ${this._favoritePositions.map(
-                  (pos) => html`
+                  (item) => html`
                     <div
                       class=${classMap({
                         'favorite-button': true,
-                        [`favorite-button-${pos}`]: true,
-                        active: pos === value,
+                        [`favorite-button-${item.value}`]: true,
+                        active: item.value === value,
                       })}
-                      @click=${() => this._applyFavorite(pos)}
+                      @click=${() => this._applyFavorite(item.value)}
                     >
                       <div class="favorite-button-shade"></div>
-                      <span class="button-label">${pos}%</span>
+                      <span class="button-label">${item.label}</span>
                     </div>
                   `
                 )}
@@ -1929,7 +1956,7 @@ class ChronoSliderCard extends LitElement {
       align-items: center;
       justify-content: center;
       text-align: center;
-      width: var(--favorite-button-width, 72px);
+      width: var(--favorite-button-width, 90px);
       height: var(--favorite-button-height, 36px);
       box-sizing: border-box;
       border: none;

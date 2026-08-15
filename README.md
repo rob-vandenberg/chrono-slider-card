@@ -146,7 +146,7 @@ show_controls: true
 show_control_switch_buttons: false
 show_favorites: true
 default_control: slider
-favorite_positions: 0, 25, 75, 100
+favorite_positions: '{0:Close}, 25, 75, {100:Open}'
 ```
 
 ### Options
@@ -156,7 +156,7 @@ favorite_positions: 0, 25, 75, 100
 | `entity` | text | required | The `cover` entity to control. |
 | `name` | text | (none) | A custom name to show above the card. Leave it out to use the entity's own name. |
 | `device_type` | `cover`/`screen`/`awning` | `cover` | Tells the card what "open" actually means for your device. For `screen` and `awning`, the percentage and the slider always represent how far the device is physically extended - 100% is always fully extended, no matter which end is labeled "open." `cover` is the exception: it mirrors Home Assistant's own native position value directly (100% = fully retracted), matching the convention some people already know. Pick `screen` for a sun screen (retracted = open), `awning` for an awning (extended = open). |
-| `favorite_positions` | list of numbers | `[0, 25, 75, 100]` | The one-tap favorite positions shown below the slider. Any number of entries is supported. |
+| `favorite_positions` | list of numbers, or comma-separated text | `[0, 25, 75, 100]` | The one-tap favorite positions shown below the slider. Any number of entries is supported. Each entry can be a plain percentage (`50`), which shows as `50%`, or a custom label using `{value:label}` (e.g. `{0:Close}`), which shows the label as-typed instead of a percentage. |
 | `show_name` | `true`/`false` | `true` | Shows the name above the card. |
 | `show_state` | `true`/`false` | `true` | Shows the "Opened"/"Closed"/"Opening"/"Closing" text. |
 | `show_percentage` | `true`/`false` | `true` | Shows the position percentage under the state text. |
@@ -274,7 +274,7 @@ styles:
 | `--favorites-margin-bottom` | `favorites` | `8px` | Gap below the favorites row. |
 | `--favorite-button-gap` | `favorites` | `16px` | Gap between individual favorite-position buttons within the row. |
 | `--favorites-max-width` | `favorites` | `384px` | Maximum width of the favorites row before buttons wrap to a new line. |
-| `--favorite-button-width` | `favorite-button` | `72px` | Width of each favorite-position button. |
+| `--favorite-button-width` | `favorite-button` | `90px` | Width of each favorite-position button. |
 | `--favorite-button-height` | `favorite-button` | `36px` | Height of each favorite-position button. |
 | `--favorite-button-padding` | `favorite-button` | `8px` | Inner padding of each favorite-position button. |
 | `--favorite-button-border-radius` | `favorite-button` | `9999px` | Corner rounding of each favorite-position button. |
