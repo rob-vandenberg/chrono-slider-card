@@ -242,7 +242,8 @@ styles:
 | `--controls-height` | `control-slider-host` or `control-button-group` | `45vh` | Height of the active control (slider or directional buttons). Shared between both, so they stay the same size regardless of which is showing. |
 | `--controls-max-height` | `control-slider-host` or `control-button-group` | `320px` | Maximum height of the active control. |
 | `--controls-min-height` | `control-slider-host` or `control-button-group` | `200px` | Minimum height of the active control. |
-| `--control-button-group-width` | `control-button-group` | `100px` | Width of the directional-button column. |
+| `--control-button-group-min-width` | `control-button-group` | `54px` | Narrowest the directional-button column is allowed to shrink to. |
+| `--control-button-group-max-width` | `control-button-group` | `100px` | Widest the directional-button column is allowed to grow to. |
 | `--control-button-group-item-gap` | `control-button-group` | `10px` | Vertical spacing between the three directional buttons. |
 | `--main-control-item-margin` | `main-control` | `8px` | Horizontal spacing between the slider and the directional-button group. |
 | `--slider-color` | `control-slider-host` | The entity's current state color | The color of the filled part of the slider, and the focus outline shown when the slider is selected with a keyboard. |
@@ -264,6 +265,8 @@ styles:
 | `--controls-gap` | `icon-button-group` | `20px` | Gap between the controls area and the slider/buttons toggle icons below it. |
 | `--icon-button-group-border-radius` | `icon-button-group` | `9999px` | Corner rounding of the slider/buttons toggle pill. |
 | `--icon-button-group-background` | `icon-button-group` | `rgba(139, 145, 151, 0.1)` | Background fill color of the toggle pill. |
+| `--icon-button-group-min-width` | `icon-button-group` | `54px` | Narrowest the slider/buttons toggle pill is allowed to shrink to. |
+| `--icon-button-group-max-width` | `icon-button-group` | `100px` | Widest the slider/buttons toggle pill is allowed to grow to. |
 | `--icon-button-group-height` | `icon-button-group` | `48px` | Height of the toggle pill. |
 | `--icon-toggle-button-size` | `icon-toggle-button` | `40px` | Size of each mode-toggle icon button, and its selection highlight. |
 | `--icon-toggle-button-gap` | `icon-toggle-button` | `4px` | Spacing around each mode-toggle icon button. |
@@ -274,7 +277,8 @@ styles:
 | `--favorites-margin-bottom` | `favorites` | `8px` | Gap below the favorites row. |
 | `--favorite-button-gap` | `favorites` | `16px` | Gap between individual favorite-position buttons within the row. |
 | `--favorites-max-width` | `favorites` | `384px` | Maximum width of the favorites row before buttons wrap to a new line. |
-| `--favorite-button-width` | `favorite-button` | `90px` | Width of each favorite-position button. |
+| `--favorite-button-min-width` | `favorite-button` | `54px` | Narrowest each favorite-position button is allowed to shrink to. |
+| `--favorite-button-max-width` | `favorite-button` | `100px` | Widest each favorite-position button is allowed to grow to. |
 | `--favorite-button-height` | `favorite-button` | `36px` | Height of each favorite-position button. |
 | `--favorite-button-padding` | `favorite-button` | `8px` | Inner padding of each favorite-position button. |
 | `--favorite-button-border-radius` | `favorite-button` | `9999px` | Corner rounding of each favorite-position button. |
