@@ -17,9 +17,10 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.1.203';
+const CARD_VERSION = '2.1.204';
 
 // --- Version History ---------------------------------------------------------
+// v2.1.204: Change slider-track default value of border-radius to inherit
 // v2.1.203: Split .favorites' single gap: var(--favorite-button-gap, 16px)
 //          into independent row-gap/column-gap: --favorite-button-row-gap
 //          (14px default) for vertical spacing between wrapped rows, and
