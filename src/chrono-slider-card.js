@@ -17,9 +17,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.1.202';
+const CARD_VERSION = '2.1.203';
 
 // --- Version History ---------------------------------------------------------
+// v2.1.203: Split .favorites' single gap: var(--favorite-button-gap, 16px)
+//          into independent row-gap/column-gap: --favorite-button-row-gap
+//          (14px default) for vertical spacing between wrapped rows, and
+//          --favorite-button-column-gap (16px default, matches the old
+//          shared value) for horizontal spacing within a row.
+//          --favorite-button-gap retired, no legacy alias. Also changed
+//          --favorites-margin-bottom's default from 8px to 10px.
 // v2.1.202: --slider-track-bar-border-radius renamed to
 //          --slider-bar-border-radius (still only controls .slider-bar's
 //          own corner rounding, independent of the outer shape - unchanged
@@ -2025,9 +2032,10 @@ class ChronoSliderCard extends LitElement {
       flex-wrap: wrap;
       width: 100%;
       max-width: var(--favorites-max-width, 384px);
-      gap: var(--favorite-button-gap, 16px);
+      row-gap: var(--favorite-button-row-gap, 14px);
+      column-gap: var(--favorite-button-column-gap, 16px);
       margin-top: var(--favorites-gap, 16px);
-      margin-bottom: var(--favorites-margin-bottom, 8px);
+      margin-bottom: var(--favorites-margin-bottom, 10px);
       user-select: none;
     }
     .favorite-button {
