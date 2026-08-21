@@ -17,9 +17,14 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.207';
+const CARD_VERSION = '2.2.208';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.208: --favorite-button-row-gap default 14px->15px (adds 7px total
+//          height across 8 wrapped favorite-button rows in a narrow card).
+//          --controls-margin-bottom default 8px->9px to compensate by the
+//          1px difference, keeping the slider/buttons cards and the
+//          favorites-only card's bottom edges level.
 // v2.2.207: Removed margin-top: 5px from both .slider and
 //          .control-button-group (now 0, still equal to each other) so
 //          their top edge aligns with the top favorite button's top edge
@@ -1817,7 +1822,7 @@ class ChronoSliderCard extends LitElement {
       flex: 1;
       width: 100%;
       margin-top: var(--controls-margin-top, 16px);
-      margin-bottom: var(--controls-margin-bottom, 8px);
+      margin-bottom: var(--controls-margin-bottom, 9px);
     }
     .main-control {
       display: flex;
@@ -2063,7 +2068,7 @@ class ChronoSliderCard extends LitElement {
       flex-wrap: wrap;
       width: 100%;
       max-width: var(--favorites-max-width, none);
-      row-gap: var(--favorite-button-row-gap, 14px);
+      row-gap: var(--favorite-button-row-gap, 15px);
       column-gap: var(--favorite-button-column-gap, 16px);
       margin-top: var(--favorites-gap, 16px);
       margin-bottom: var(--favorites-margin-bottom, 8px);
