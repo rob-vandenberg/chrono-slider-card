@@ -17,9 +17,42 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.1.200';
+const CARD_VERSION = '2.1.202';
 
 // --- Version History ---------------------------------------------------------
+// v2.1.202: --slider-track-bar-border-radius renamed to
+//          --slider-bar-border-radius (still only controls .slider-bar's
+//          own corner rounding, independent of the outer shape - unchanged
+//          default of 8px). --slider-border-radius (the outer .slider
+//          shape, unchanged, still 36px default) now also explicitly
+//          applied to .slider-track via border-radius: var(--slider-border-
+//          radius), rather than relying only on the parent's overflow:
+//          hidden clip to imply that shape - same variable on both, so no
+//          possibility of the two drifting apart and producing a corner
+//          seam the way two independent variables could have.
+// v2.1.201: Collapsed the slider's three wrapper layers
+//          (.control-slider-host > .slider-container > #slider/.slider)
+//          into a single .slider element - verified all three previously
+//          added zero box-model delta (no padding/border/margin on any of
+//          them), so the merged element's bounding box is pixel-identical
+//          to the old #slider's, meaning drag math (_valueFromEvent's
+//          getBoundingClientRect()) needed no numeric changes. Also
+//          renamed .slider-track-background to .slider-track and
+//          .slider-track-bar to .slider-bar, dropping the redundant
+//          "track" middle-word from both (track = the static channel,
+//          bar = the moving fill within it - matches the industry-standard
+//          term for this exact slider part). --slider-track-bar-border-radius
+//          intentionally left unrenamed (not requested) - it now describes
+//          .slider-bar's border-radius without "bar" appearing in its own
+//          name, a known, accepted inconsistency, not an oversight.
+//          _sliderContainerElement and _sliderElement (two refs to what's
+//          now the same node) collapsed into a single _sliderElement,
+//          updated in _paint(), _onSliderPointerDown(), and
+//          _onPointerUp(). The entity-state-driven stylesheet's target
+//          selector updated from .control-slider-host to .slider. Two
+//          stale maintenance comments (HANDLE_SIZE_PX/
+//          HANDLE_MARGIN_DIVISOR) referencing the retired .slider-container
+//          name updated to .slider.
 // v2.1.200: styles: now supports nested classname keys of arbitrary depth,
 //          compiling to descendant selectors (e.g.
 //          "favorites: { favorite-button-30: { background: red } }" ->
@@ -287,12 +320,12 @@ const UNAVAILABLE = 'unavailable';
 // see connectedCallback(). Not tied to any config option.
 const RELATIVE_TIME_REFRESH_INTERVAL_MS = 30000;
 
-// Must match .slider-container's --handle-size: 4px in static styles below
+// Must match .slider's --handle-size: 4px in static styles below
 // (a fixed literal, not exposed as an overridable variable the way
 // --slider-min-width/--slider-max-width are).
 const HANDLE_SIZE_PX = 4;
 // Divisor used to derive the slider's handle margin from its width - must
-// match the divisor in .slider-container's --handle-margin CSS formula.
+// match the divisor in .slider's --handle-margin CSS formula.
 const HANDLE_MARGIN_DIVISOR = 8;
 
 // Device-type preset table. Each of the 3 device-behavior booleans is
@@ -1298,8 +1331,7 @@ class ChronoSliderCard extends LitElement {
   }
 
   firstUpdated() {
-    this._sliderContainerElement = this.renderRoot.querySelector('.slider-container');
-    this._sliderElement = this.renderRoot.querySelector('#slider');
+    this._sliderElement = this.renderRoot.querySelector('.slider');
     this._tooltipElement = this.renderRoot.querySelector('.tooltip');
     // Appended after Lit's own static-style sheets (already present in
     // adoptedStyleSheets by this point) so both win cascade ties against
@@ -1374,7 +1406,7 @@ class ChronoSliderCard extends LitElement {
   // displayed percentage (via device_open_percentage).
   _paint(sliderValue) {
     const fraction = sliderValue / 100;
-    if (this._sliderContainerElement) this._sliderContainerElement.style.setProperty('--value', fraction.toString());
+    if (this._sliderElement) this._sliderElement.style.setProperty('--value', fraction.toString());
     if (this._tooltipElement) {
       // sliderValue is in slider-fill-space; convert to raw position via
       // device_open_slider, then to the displayed percentage via
@@ -1387,13 +1419,13 @@ class ChronoSliderCard extends LitElement {
   _onSliderPointerDown(e) {
     e.preventDefault();
     this._dragging = true;
-    this._sliderContainerElement?.classList.add('pressed');
+    this._sliderElement?.classList.add('pressed');
     this._tooltipElement?.classList.add('visible');
     // Read the live --slider-min-width/--slider-max-width once per drag (not
     // per pointermove) and derive the handle margin the same way the CSS
-    // does (see .slider-container's --handle-margin, fixed in v1.6.61) - so
+    // does (see .slider's --handle-margin, fixed in v1.6.61) - so
     // drag math never goes stale if either is overridden via styles:.
-    const computedStyle = getComputedStyle(this._sliderContainerElement);
+    const computedStyle = getComputedStyle(this._sliderElement);
     const minWidthPx = parseFloat(computedStyle.getPropertyValue('--slider-min-width'));
     const maxWidthPx = parseFloat(computedStyle.getPropertyValue('--slider-max-width'));
     this._dragHandleMarginPx = Math.max(minWidthPx, maxWidthPx) / HANDLE_MARGIN_DIVISOR;
@@ -1415,7 +1447,7 @@ class ChronoSliderCard extends LitElement {
   _onPointerUp() {
     if (!this._dragging) return;
     this._dragging = false;
-    this._sliderContainerElement?.classList.remove('pressed');
+    this._sliderElement?.classList.remove('pressed');
     this._tooltipElement?.classList.remove('visible');
     this._teardownDragListeners();
     const value = this._dragValue;
@@ -1545,7 +1577,7 @@ class ChronoSliderCard extends LitElement {
     // against it. Kept in sync with every render(), same as the template
     // itself.
     this._stateStyleSheet.replaceSync(
-      `.control-slider-host { --state-cover-inactive-color: ${openColor}; --slider-color: ${color}; --slider-background: ${color}; }`
+      `.slider { --state-cover-inactive-color: ${openColor}; --slider-color: ${color}; --slider-background: ${color}; }`
     );
 
     const openDisabled = !cscCanOpenCover(entity, true);
@@ -1580,21 +1612,18 @@ class ChronoSliderCard extends LitElement {
         <div class="controls">
           <div class="main-control">
             <div
-              class=${classMap({ 'control-slider-host': true, active: this._toggleMode === 'position' })}
+              class=${classMap({ slider: true, active: this._toggleMode === 'position' })}
+              role="slider"
+              tabindex="0"
+              aria-orientation="vertical"
+              style=${styleMap({ '--value': (sliderValue / 100).toString() })}
+              @pointerdown=${(e) => this._onSliderPointerDown(e)}
             >
-              <div
-                class="slider-container"
-                style=${styleMap({ '--value': (sliderValue / 100).toString() })}
-                @pointerdown=${(e) => this._onSliderPointerDown(e)}
-              >
-                <div id="slider" class="slider" role="slider" tabindex="0" aria-orientation="vertical">
-                  <div class="slider-track-background"></div>
-                  <div class="slider-track-bar">
-                    <div class="handle"></div>
-                  </div>
-                </div>
-                <span class="tooltip"></span>
+              <div class="slider-track"></div>
+              <div class="slider-bar">
+                <div class="handle"></div>
               </div>
+              <span class="tooltip"></span>
             </div>
             <div class=${classMap({ 'control-button-group': true, active: this._toggleMode === 'button' })}>
               <button
@@ -1823,35 +1852,23 @@ class ChronoSliderCard extends LitElement {
     }
 
     /* ---- Slider ---- */
-    .control-slider-host {
+    .slider {
       display: none;
+      position: relative;
       --slider-color: var(--primary-color);
       --slider-background: var(--disabled-color);
       --slider-background-opacity: 0.2;
       --slider-max-width: 130px;
       --slider-min-width: 80px;
       --slider-border-radius: 36px;
+      --handle-size: 4px;
+      --handle-margin: calc(max(var(--slider-min-width), var(--slider-max-width)) / 8);
       height: var(--controls-height, 45vh);
       max-height: var(--controls-max-height, 320px);
       min-height: var(--controls-min-height, 200px);
       width: 100%;
       min-width: var(--slider-min-width);
       max-width: var(--slider-max-width);
-    }
-    .control-slider-host.active {
-      display: block;
-    }
-    .slider-container {
-      position: relative;
-      height: 100%;
-      width: 100%;
-      --handle-size: 4px;
-      --handle-margin: calc(max(var(--slider-min-width), var(--slider-max-width)) / 8);
-    }
-    .slider {
-      position: relative;
-      height: 100%;
-      width: 100%;
       border-radius: var(--slider-border-radius);
       transform: translateZ(0);
       transition: box-shadow var(--transition-duration, 180ms) ease-in-out;
@@ -1860,19 +1877,23 @@ class ChronoSliderCard extends LitElement {
       cursor: pointer;
       touch-action: none;
     }
+    .slider.active {
+      display: block;
+    }
     .slider:focus-visible {
       box-shadow: 0 0 0 var(--focus-ring-width, 2px) var(--slider-color);
     }
-    .slider-track-background {
+    .slider-track {
       position: absolute;
       top: 0;
       left: 0;
       height: 100%;
       width: 100%;
+      border-radius: var(--slider-border-radius);
       background: var(--slider-background);
       opacity: var(--slider-background-opacity);
     }
-    .slider-track-bar {
+    .slider-bar {
       --slider-size: calc(100% - 2 * var(--handle-margin) - var(--handle-size));
       position: absolute;
       height: 100%;
@@ -1880,10 +1901,10 @@ class ChronoSliderCard extends LitElement {
       background-color: var(--slider-color);
       transition: transform var(--transition-duration, 180ms) ease-in-out, background-color var(--transition-duration, 180ms) ease-in-out;
     }
-    .slider-track-bar {
+    .slider-bar {
       top: 0;
       left: 0;
-      border-radius: var(--slider-track-bar-border-radius, 8px);
+      border-radius: var(--slider-bar-border-radius, 8px);
       /* Fill grows top-down as value increases, so the visible boundary
          moves the same direction as the drag (down = more open). */
       transform: translate3d(0, calc((var(--value, 0) - 1) * var(--slider-size)), 0);
@@ -1900,7 +1921,7 @@ class ChronoSliderCard extends LitElement {
       width: 50%;
       height: var(--handle-size);
     }
-    .pressed .slider-track-bar {
+    .pressed .slider-bar {
       transition: none;
     }
     .tooltip {
