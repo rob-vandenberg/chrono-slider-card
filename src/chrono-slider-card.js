@@ -17,9 +17,28 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.0.100';
+const CARD_VERSION = '2.1.200';
 
 // --- Version History ---------------------------------------------------------
+// v2.1.200: styles: now supports nested classname keys of arbitrary depth,
+//          compiling to descendant selectors (e.g.
+//          "favorites: { favorite-button-30: { background: red } }" ->
+//          ".favorites .favorite-button-30 { background: red; }"),
+//          replacing the previous flat, one-level-only implementation.
+//          cscBuildUserStylesCss (flat) replaced by
+//          cscBuildUserStylesRules (recursive) + cscBuildUserStylesCss
+//          (thin wrapper) - both names taken directly from the chrono-*
+//          styles: architecture specification's reference implementation,
+//          only prefixed csc to match this file's existing naming
+//          convention. 'host' remains reserved for :host only at the top
+//          level (selectorPath.length === 0); one level deeper, a key
+//          literally named host is an ordinary classname segment. A
+//          classname key with only nested children and no direct
+//          declarations of its own still emits an empty rule (.foo { }),
+//          not silently dropped. A bare top-level primitive with no
+//          wrapping classname is silently ignored, same as before. No
+//          call-site changes - setConfig's use of cscBuildUserStylesCss is
+//          unchanged in name and signature.
 // v2.0.100: Harmonized width handling across all four sizeable controls
 //          (slider, control-button-group, icon-button-group, favorite-
 //          button) to the same mechanism the slider already used:
@@ -525,24 +544,45 @@ function cscToKebab(str) {
   return String(str).replace(/_/g, '-');
 }
 
-// Converts config.styles (a flat { class_name: { property: value } } object)
-// into a single ready-to-inject CSS text block. No validation of class names
-// or property names against anything - any key the user writes is accepted
-// and converted as-is; this is a literal YAML->CSS translation, not a
-// filtered one. One reserved key: 'host' targets the card's own :host
-// element (a pseudo-class, not a real class) instead of .host - there is
-// no class="host" anywhere in this card's markup, so this can't collide.
-function cscBuildUserStylesCss(stylesConfig) {
-  let css = '';
-  for (const [className, props] of Object.entries(stylesConfig)) {
-    if (!props || typeof props !== 'object' || Array.isArray(props)) continue;
-    const declarations = Object.entries(props)
-      .map(([prop, value]) => `${cscToKebab(prop)}: ${value};`)
-      .join(' ');
-    const selector = className === 'host' ? ':host' : `.${cscToKebab(className)}`;
-    css += `${selector} { ${declarations} }\n`;
+// Converts config.styles into a single ready-to-inject CSS text block.
+// Supports nesting to arbitrary depth: a classname key whose value is a
+// plain object is a nested descendant selector, not a new independent
+// rule - it appends onto whatever selector path has been built so far
+// (e.g. favorites: { favorite-button-30: { background: red } } compiles to
+// ".favorites .favorite-button-30 { background: red; }"). No validation of
+// class names or property names against anything - any key the user
+// writes is accepted and converted as-is; this is a literal YAML->CSS
+// translation, not a filtered one. One reserved key: 'host' targets the
+// card's own :host element (a pseudo-class, not a real class) instead of
+// .host, but only at the top level (selectorPath.length === 0) - one
+// level deeper, a key literally named 'host' is just an ordinary
+// classname segment, since "the card's own host" only makes sense as a
+// root-level concept. A classname key with only nested children and no
+// direct declarations of its own still emits an empty rule (.foo { }),
+// never silently dropped. A bare top-level primitive with no wrapping
+// classname has nowhere valid to attach and is silently ignored.
+function cscBuildUserStylesRules(props, selectorPath) {
+  const rules = [];
+  let declarations = '';
+  for (const [key, value] of Object.entries(props)) {
+    const isNestedClass = value && typeof value === 'object' && !Array.isArray(value);
+    if (isNestedClass) {
+      const segment = selectorPath.length === 0 && key === 'host' ? ':host' : `.${cscToKebab(key)}`;
+      rules.push(...cscBuildUserStylesRules(value, [...selectorPath, segment]));
+    } else if (selectorPath.length > 0) {
+      declarations += `${cscToKebab(key)}: ${value}; `;
+    }
+    // else: bare top-level non-object value with no wrapping classname -
+    // silently ignored.
   }
-  return css;
+  if (selectorPath.length > 0) {
+    rules.push(`${selectorPath.join(' ')} { ${declarations.trim()} }`);
+  }
+  return rules;
+}
+
+function cscBuildUserStylesCss(stylesConfig) {
+  return cscBuildUserStylesRules(stylesConfig, []).join('\n');
 }
 
 function cscTextField(label, value, onChange, opts = {}) {
@@ -1903,7 +1943,7 @@ class ChronoSliderCard extends LitElement {
       box-sizing: border-box;
       width: 100%;
       min-width: var(--icon-button-group-min-width, 54px);
-      max-width: var(--icon-button-group-max-width, 96px);
+      max-width: var(--icon-button-group-max-width, 100px);
       padding: 0;
     }
     .icon-toggle-button {
@@ -1979,7 +2019,7 @@ class ChronoSliderCard extends LitElement {
       text-align: center;
       width: 100%;
       min-width: var(--favorite-button-min-width, 54px);
-      max-width: var(--favorite-button-max-width, 96px);
+      max-width: var(--favorite-button-max-width, 100px);
       height: var(--favorite-button-height, 36px);
       box-sizing: border-box;
       border: none;
