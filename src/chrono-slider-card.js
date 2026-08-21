@@ -17,10 +17,26 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.205';
+const CARD_VERSION = '2.2.206';
 
 // --- Version History ---------------------------------------------------------
-// v2.2.205: Synced control defaults with chrono-cover: --state-font-size
+// v2.2.206: .favorites' --favorites-max-width default changed from 384px to
+//          none, matching chrono-cover. Root cause of 4 default favorite
+//          buttons wrapping to a second row: line-wrapping is decided by
+//          each button's hypothetical main size (its max-width, 96px,
+//          since width:100% resolves against the container before
+//          flex-shrink runs) - 4 buttons x 96px + 3 gaps x 16px = 432px
+//          needed, which the old 384px cap could never satisfy regardless
+//          of the card's actual on-screen width. Removing the cap lets
+//          .favorites size itself against its real container (the card/
+//          grid section) same as chrono-cover already did against its own
+//          popup frame. Found via a full structural cross-project CSS
+//          comparison scoped to everything inside ha-card (the confirmed
+//          shared boundary between this card and chrono-cover's popup) -
+//          the only other differences found were already-flagged,
+//          deliberate non-syncs (.state padding granularity, .favorites
+//          gap-splitting, .slider-track border-radius, ha-card's border).
+// v2.1.205: Synced control defaults with chrono-cover: --state-font-size
 //          32px->36px, --favorite-button-max-width and
 //          --icon-button-group-max-width both 100px->96px,
 //          --favorites-margin-bottom 10px->8px, --controls-gap (icon-
@@ -2043,7 +2059,7 @@ class ChronoSliderCard extends LitElement {
       justify-content: center;
       flex-wrap: wrap;
       width: 100%;
-      max-width: var(--favorites-max-width, 384px);
+      max-width: var(--favorites-max-width, none);
       row-gap: var(--favorite-button-row-gap, 14px);
       column-gap: var(--favorite-button-column-gap, 16px);
       margin-top: var(--favorites-gap, 16px);
