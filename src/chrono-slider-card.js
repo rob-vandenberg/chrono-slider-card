@@ -17,9 +17,14 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.206';
+const CARD_VERSION = '2.2.207';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.207: Removed margin-top: 5px from both .slider and
+//          .control-button-group (now 0, still equal to each other) so
+//          their top edge aligns with the top favorite button's top edge
+//          in the favorites-only control mode. Diverges from chrono-
+//          cover's matching 5px on both - noted, not acted on here.
 // v2.2.206: .favorites' --favorites-max-width default changed from 384px to
 //          none, matching chrono-cover. Root cause of 4 default favorite
 //          buttons wrapping to a second row: line-wrapping is decided by
@@ -1827,7 +1832,6 @@ class ChronoSliderCard extends LitElement {
 
     /* ---- Directional button group (close/stop/open) ---- */
     .control-button-group {
-      margin-top: 5px;
       height: var(--controls-height, 45vh);
       max-height: var(--controls-max-height, 320px);
       min-height: var(--controls-min-height, 200px);
@@ -1889,7 +1893,6 @@ class ChronoSliderCard extends LitElement {
     .slider {
       display: none;
       position: relative;
-      margin-top: 5px;
       --slider-color: var(--primary-color);
       --slider-background: var(--disabled-color);
       --slider-background-opacity: 0.2;
