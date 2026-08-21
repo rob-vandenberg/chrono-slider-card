@@ -274,8 +274,9 @@ styles:
 | `--icon-toggle-shade-expand` | `icon-toggle-button` | `-10px` | How far the selection highlight extends beyond the icon itself on each side. |
 | `--icon-toggle-hover-opacity` | `icon-toggle-button` | `0.1` | Opacity of the highlight shown when hovering an unselected toggle icon. |
 | `--favorites-gap` | `favorites` | `16px` | Gap above the favorites row. |
-| `--favorites-margin-bottom` | `favorites` | `8px` | Gap below the favorites row. |
-| `--favorite-button-gap` | `favorites` | `16px` | Gap between individual favorite-position buttons within the row. |
+| `--favorites-margin-bottom` | `favorites` | `10px` | Gap below the favorites row. |
+| `--favorite-button-row-gap` | `favorites` | `14px` | Vertical gap between wrapped rows of favorite-position buttons. |
+| `--favorite-button-column-gap` | `favorites` | `16px` | Horizontal gap between favorite-position buttons within a row. |
 | `--favorites-max-width` | `favorites` | `384px` | Maximum width of the favorites row before buttons wrap to a new line. |
 | `--favorite-button-min-width` | `favorite-button` | `54px` | Narrowest each favorite-position button is allowed to shrink to. |
 | `--favorite-button-max-width` | `favorite-button` | `100px` | Widest each favorite-position button is allowed to grow to. |
