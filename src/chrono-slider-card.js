@@ -17,9 +17,18 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.1.204';
+const CARD_VERSION = '2.2.205';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.205: Synced control defaults with chrono-cover: --state-font-size
+//          32px->36px, --favorite-button-max-width and
+//          --icon-button-group-max-width both 100px->96px,
+//          --favorites-margin-bottom 10px->8px, --controls-gap (icon-
+//          button-group's margin-top) 20px->24px. Added margin-top: 5px
+//          to both .slider and .control-button-group so the two toggled
+//          control modes end up the same overall height. .slider-track's
+//          border-radius: inherit left unchanged - already correct,
+//          chrono-cover is the one catching up there.
 // v2.1.204: Change slider-track default value of border-radius to inherit
 // v2.1.203: Split .favorites' single gap: var(--favorite-button-gap, 16px)
 //          into independent row-gap/column-gap: --favorite-button-row-gap
@@ -1757,7 +1766,7 @@ class ChronoSliderCard extends LitElement {
     .state {
       font-style: normal;
       font-weight: var(--state-font-weight, 400);
-      font-size: var(--state-font-size, 32px);
+      font-size: var(--state-font-size, 36px);
       line-height: var(--state-line-height, 1.2);
       padding: var(--state-padding-y, 4px) 0;
     }
@@ -1802,6 +1811,7 @@ class ChronoSliderCard extends LitElement {
 
     /* ---- Directional button group (close/stop/open) ---- */
     .control-button-group {
+      margin-top: 5px;
       height: var(--controls-height, 45vh);
       max-height: var(--controls-max-height, 320px);
       min-height: var(--controls-min-height, 200px);
@@ -1863,6 +1873,7 @@ class ChronoSliderCard extends LitElement {
     .slider {
       display: none;
       position: relative;
+      margin-top: 5px;
       --slider-color: var(--primary-color);
       --slider-background: var(--disabled-color);
       --slider-background-opacity: 0.2;
@@ -1966,13 +1977,13 @@ class ChronoSliderCard extends LitElement {
       flex-direction: row;
       align-items: center;
       height: var(--icon-button-group-height, 48px);
-      margin-top: var(--controls-gap, 20px);
+      margin-top: var(--controls-gap, 24px);
       border-radius: var(--icon-button-group-border-radius, 9999px);
       background-color: var(--icon-button-group-background, rgba(139, 145, 151, 0.1));
       box-sizing: border-box;
       width: 100%;
       min-width: var(--icon-button-group-min-width, 54px);
-      max-width: var(--icon-button-group-max-width, 100px);
+      max-width: var(--icon-button-group-max-width, 96px);
       padding: 0;
     }
     .icon-toggle-button {
@@ -2036,7 +2047,7 @@ class ChronoSliderCard extends LitElement {
       row-gap: var(--favorite-button-row-gap, 14px);
       column-gap: var(--favorite-button-column-gap, 16px);
       margin-top: var(--favorites-gap, 16px);
-      margin-bottom: var(--favorites-margin-bottom, 10px);
+      margin-bottom: var(--favorites-margin-bottom, 8px);
       user-select: none;
     }
     .favorite-button {
@@ -2049,7 +2060,7 @@ class ChronoSliderCard extends LitElement {
       text-align: center;
       width: 100%;
       min-width: var(--favorite-button-min-width, 54px);
-      max-width: var(--favorite-button-max-width, 100px);
+      max-width: var(--favorite-button-max-width, 96px);
       height: var(--favorite-button-height, 36px);
       box-sizing: border-box;
       border: none;
