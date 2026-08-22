@@ -17,9 +17,46 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.212';
+const CARD_VERSION = '2.2.213';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.213: "icon" naming pass on the control-switch-buttons toggle icons -
+//          "icon" is now only used where a variable/class refers to the
+//          actual SVG icon graphic (--button-icon-size, unchanged); every
+//          case that actually referred to the button itself is renamed
+//          instead. CSS custom properties: --controls-gap ->
+//          --control-switch-buttons-margin-top (still .control-switch-
+//          buttons' own margin-top, unrelated to .controls' own --controls-
+//          margin-top/--controls-margin-bottom pair - was ambiguously
+//          named after that other element); --icon-toggle-button-size ->
+//          --control-switch-button-size, --icon-toggle-button-gap ->
+//          --control-switch-button-gap, --icon-toggle-border-radius ->
+//          --control-switch-button-border-radius, --icon-toggle-hover-
+//          opacity -> --control-switch-button-hover-opacity, --icon-toggle-
+//          shade-expand -> --control-switch-button-shade-expand (all five
+//          singular - they describe a property of one individual toggle
+//          button/its shade, distinct from the plural --control-switch-
+//          buttons-* set naming the container itself). Defaults unchanged
+//          on all six. Classnames: .icon-toggle-button -> .control-switch-
+//          button, .icon-toggle-shade -> .control-switch-button-shade.
+//          The two unstyled classMap identity-hook classes on the
+//          individual toggle buttons (present in the rendered DOM but not
+//          targeted by any CSS rule or JS selector) renamed for the same
+//          reason plus a second pass: icon-toggle-button-position ->
+//          control-switch-slider-mode, icon-toggle-button-button ->
+//          control-switch-buttons-mode (the literal icon-prefixed
+//          translation would have been control-switch-button-buttons -
+//          repeating "button" as both element type and mode name; this
+//          form names what each hook selects - the mode - instead).
+//          Internal _toggleMode state values renamed 'position' -> 'slider'
+//          and 'button' -> 'buttons', matching the public vocabulary
+//          already used by default_control and the localStorage-persisted
+//          value everywhere else in the file - removes the translation
+//          ternary this mismatch previously required at both the setConfig
+//          read path and _setToggleMode's localStorage.setItem() write
+//          (now writes mode directly). aria-labels updated to match:
+//          "Position mode" -> "Slider mode", "Button mode" -> "Buttons
+//          mode".
 // v2.2.212: Renamed CSS custom property --favorites-gap to
 //          --favorites-margin-top (.favorites' margin-top - the gap
 //          between the controls block above and the favorites row).
@@ -1352,7 +1389,7 @@ class ChronoSliderCard extends LitElement {
     }
     const effectiveControl =
       storedControl === 'buttons' || storedControl === 'slider' ? storedControl : this._defaultControl;
-    this._toggleMode = effectiveControl === 'buttons' ? 'button' : 'position';
+    this._toggleMode = effectiveControl === 'buttons' ? 'buttons' : 'slider';
     this._dragging = false;
     this._dragValue = null;
 
@@ -1596,7 +1633,7 @@ class ChronoSliderCard extends LitElement {
   _setToggleMode(mode) {
     this._toggleMode = mode;
     try {
-      window.localStorage.setItem(cscToggleModeStorageKey(this._config.entity), mode === 'button' ? 'buttons' : 'slider');
+      window.localStorage.setItem(cscToggleModeStorageKey(this._config.entity), mode);
     } catch (e) {
       // localStorage unavailable (privacy mode, disabled, quota) - the
       // toggle still works for this session, it just won't persist.
@@ -1700,7 +1737,7 @@ class ChronoSliderCard extends LitElement {
         <div class="controls">
           <div class="main-control">
             <div
-              class=${classMap({ slider: true, active: this._toggleMode === 'position' })}
+              class=${classMap({ slider: true, active: this._toggleMode === 'slider' })}
               role="slider"
               tabindex="0"
               aria-orientation="vertical"
@@ -1713,7 +1750,7 @@ class ChronoSliderCard extends LitElement {
               </div>
               <span class="tooltip"></span>
             </div>
-            <div class=${classMap({ 'control-button-group': true, active: this._toggleMode === 'button' })}>
+            <div class=${classMap({ 'control-button-group': true, active: this._toggleMode === 'buttons' })}>
               <button
                 class=${classMap({ 'control-button': true, 'control-button-open': true, disabled: openDisabled })}
                 @click=${() => this._callDirectional('open')}
@@ -1745,26 +1782,26 @@ class ChronoSliderCard extends LitElement {
                 <div class="control-switch-buttons">
                   <button
                     class=${classMap({
-                      'icon-toggle-button': true,
-                      'icon-toggle-button-position': true,
-                      selected: this._toggleMode === 'position',
+                      'control-switch-button': true,
+                      'control-switch-slider-mode': true,
+                      selected: this._toggleMode === 'slider',
                     })}
-                    @click=${() => this._setToggleMode('position')}
-                    aria-label="Position mode"
+                    @click=${() => this._setToggleMode('slider')}
+                    aria-label="Slider mode"
                   >
-                    <div class="icon-toggle-shade"></div>
+                    <div class="control-switch-button-shade"></div>
                     <svg viewBox="0 0 24 24"><path d=${ICON_MENU}></path></svg>
                   </button>
                   <button
                     class=${classMap({
-                      'icon-toggle-button': true,
-                      'icon-toggle-button-button': true,
-                      selected: this._toggleMode === 'button',
+                      'control-switch-button': true,
+                      'control-switch-buttons-mode': true,
+                      selected: this._toggleMode === 'buttons',
                     })}
-                    @click=${() => this._setToggleMode('button')}
-                    aria-label="Button mode"
+                    @click=${() => this._setToggleMode('buttons')}
+                    aria-label="Buttons mode"
                   >
-                    <div class="icon-toggle-shade"></div>
+                    <div class="control-switch-button-shade"></div>
                     <svg viewBox="0 0 24 24"><path d=${ICON_SWAP_VERTICAL}></path></svg>
                   </button>
                 </div>
@@ -2046,7 +2083,7 @@ class ChronoSliderCard extends LitElement {
       flex-direction: row;
       align-items: center;
       height: var(--control-switch-buttons-height, 48px);
-      margin-top: var(--controls-gap, 24px);
+      margin-top: var(--control-switch-buttons-margin-top, 24px);
       border-radius: var(--control-switch-buttons-border-radius, 9999px);
       background-color: var(--control-switch-buttons-background, rgba(139, 145, 151, 0.1));
       box-sizing: border-box;
@@ -2055,14 +2092,14 @@ class ChronoSliderCard extends LitElement {
       max-width: var(--control-switch-buttons-max-width, 96px);
       padding: 0;
     }
-    .icon-toggle-button {
+    .control-switch-button {
       position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: var(--icon-toggle-button-size, 40px);
-      height: var(--icon-toggle-button-size, 40px);
-      margin: var(--icon-toggle-button-gap, 4px);
+      width: var(--control-switch-button-size, 40px);
+      height: var(--control-switch-button-size, 40px);
+      margin: var(--control-switch-button-gap, 4px);
       border: none;
       background: none;
       padding: 0;
@@ -2070,37 +2107,37 @@ class ChronoSliderCard extends LitElement {
       color: var(--primary-text-color);
       -webkit-tap-highlight-color: transparent;
     }
-    .icon-toggle-button svg {
+    .control-switch-button svg {
       width: var(--button-icon-size, 24px);
       height: var(--button-icon-size, 24px);
       fill: currentColor;
       position: relative;
       z-index: 1;
     }
-    .icon-toggle-shade {
+    .control-switch-button-shade {
       opacity: 0;
       transition: opacity var(--transition-duration, 180ms) ease-in-out;
       background-color: var(--primary-text-color);
-      border-radius: var(--icon-toggle-border-radius, 9999px);
-      height: var(--icon-toggle-button-size, 40px);
-      width: var(--icon-toggle-button-size, 40px);
+      border-radius: var(--control-switch-button-border-radius, 9999px);
+      height: var(--control-switch-button-size, 40px);
+      width: var(--control-switch-button-size, 40px);
       position: absolute;
-      top: var(--icon-toggle-shade-expand, -10px);
-      left: var(--icon-toggle-shade-expand, -10px);
-      bottom: var(--icon-toggle-shade-expand, -10px);
-      right: var(--icon-toggle-shade-expand, -10px);
+      top: var(--control-switch-button-shade-expand, -10px);
+      left: var(--control-switch-button-shade-expand, -10px);
+      bottom: var(--control-switch-button-shade-expand, -10px);
+      right: var(--control-switch-button-shade-expand, -10px);
       margin: auto;
       box-sizing: border-box;
     }
-    .icon-toggle-button.selected {
+    .control-switch-button.selected {
       color: var(--primary-background-color);
     }
-    .icon-toggle-button.selected .icon-toggle-shade {
+    .control-switch-button.selected .control-switch-button-shade {
       opacity: 1;
     }
     @media (hover: hover) {
-      .icon-toggle-button:not(.selected):hover .icon-toggle-shade {
-        opacity: var(--icon-toggle-hover-opacity, 0.1);
+      .control-switch-button:not(.selected):hover .control-switch-button-shade {
+        opacity: var(--control-switch-button-hover-opacity, 0.1);
       }
     }
 
