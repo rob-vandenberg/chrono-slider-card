@@ -17,9 +17,31 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.208';
+const CARD_VERSION = '2.2.210';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.210: Renamed the five --icon-button-group-* CSS custom properties to
+//          --control-switch-buttons-* to match the classname rename from
+//          v2.2.209 (which had renamed the classname but missed these):
+//          --icon-button-group-height -> --control-switch-buttons-height,
+//          --icon-button-group-border-radius ->
+//          --control-switch-buttons-border-radius,
+//          --icon-button-group-background ->
+//          --control-switch-buttons-background,
+//          --icon-button-group-min-width ->
+//          --control-switch-buttons-min-width,
+//          --icon-button-group-max-width ->
+//          --control-switch-buttons-max-width. Defaults unchanged.
+// v2.2.209: Renamed --favorite-button-row-gap -> --favorites-row-gap and
+//          --favorite-button-column-gap -> --favorites-column-gap.
+//          Renamed .icon-button-group classname -> .control-switch-buttons
+//          (the --icon-button-group-* CSS custom properties were left
+//          unrenamed - not requested, flagged separately). Default
+//          favorites row gap changed 15px->16px; default
+//          --controls-margin-bottom reverted 9px->8px. Note: this reopens
+//          the pixel-perfect bottom-edge alignment established in
+//          v2.2.208 between the favorites-only card and the slider/
+//          control-button-group cards.
 // v2.2.208: --favorite-button-row-gap default 14px->15px (adds 7px total
 //          height across 8 wrapped favorite-button rows in a narrow card).
 //          --controls-margin-bottom default 8px->9px to compensate by the
@@ -1697,7 +1719,7 @@ class ChronoSliderCard extends LitElement {
           </div>
           ${this._showControlSwitchButtons
             ? html`
-                <div class="icon-button-group">
+                <div class="control-switch-buttons">
                   <button
                     class=${classMap({
                       'icon-toggle-button': true,
@@ -1822,7 +1844,7 @@ class ChronoSliderCard extends LitElement {
       flex: 1;
       width: 100%;
       margin-top: var(--controls-margin-top, 16px);
-      margin-bottom: var(--controls-margin-bottom, 9px);
+      margin-bottom: var(--controls-margin-bottom, 8px);
     }
     .main-control {
       display: flex;
@@ -1995,19 +2017,19 @@ class ChronoSliderCard extends LitElement {
     }
 
     /* ---- Slider<->buttons mode-toggle icons ---- */
-    .icon-button-group {
+    .control-switch-buttons {
       position: relative;
       display: flex;
       flex-direction: row;
       align-items: center;
-      height: var(--icon-button-group-height, 48px);
+      height: var(--control-switch-buttons-height, 48px);
       margin-top: var(--controls-gap, 24px);
-      border-radius: var(--icon-button-group-border-radius, 9999px);
-      background-color: var(--icon-button-group-background, rgba(139, 145, 151, 0.1));
+      border-radius: var(--control-switch-buttons-border-radius, 9999px);
+      background-color: var(--control-switch-buttons-background, rgba(139, 145, 151, 0.1));
       box-sizing: border-box;
       width: 100%;
-      min-width: var(--icon-button-group-min-width, 54px);
-      max-width: var(--icon-button-group-max-width, 96px);
+      min-width: var(--control-switch-buttons-min-width, 54px);
+      max-width: var(--control-switch-buttons-max-width, 96px);
       padding: 0;
     }
     .icon-toggle-button {
@@ -2068,8 +2090,8 @@ class ChronoSliderCard extends LitElement {
       flex-wrap: wrap;
       width: 100%;
       max-width: var(--favorites-max-width, none);
-      row-gap: var(--favorite-button-row-gap, 15px);
-      column-gap: var(--favorite-button-column-gap, 16px);
+      row-gap: var(--favorites-row-gap, 16px);
+      column-gap: var(--favorites-column-gap, 16px);
       margin-top: var(--favorites-gap, 16px);
       margin-bottom: var(--favorites-margin-bottom, 8px);
       user-select: none;
