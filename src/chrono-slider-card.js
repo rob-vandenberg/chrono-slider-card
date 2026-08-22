@@ -17,9 +17,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.213';
+const CARD_VERSION = '2.2.214';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.214: Split --state-padding-y into --state-padding-top and
+//          --state-padding-bottom (defaults unchanged, 4px each - no
+//          visual change unless one is overridden independently). This
+//          resolves the last remaining deliberate divergence from
+//          chrono-cover flagged in the transfer document (§5.2) -
+//          chrono-cover now also uses this same split, so the two
+//          projects are byte-identical on .state padding again.
 // v2.2.213: "icon" naming pass on the control-switch-buttons toggle icons -
 //          "icon" is now only used where a variable/class refers to the
 //          actual SVG icon graphic (--button-icon-size, unchanged); every
@@ -1876,7 +1883,8 @@ class ChronoSliderCard extends LitElement {
       font-weight: var(--state-font-weight, 400);
       font-size: var(--state-font-size, 36px);
       line-height: var(--state-line-height, 1.2);
-      padding: var(--state-padding-y, 4px) 0;
+      padding-top: var(--state-padding-top, 4px);
+      padding-bottom: var(--state-padding-bottom, 4px);
     }
     .percentage {
       font-style: normal;
