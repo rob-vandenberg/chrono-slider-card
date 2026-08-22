@@ -17,9 +17,23 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.210';
+const CARD_VERSION = '2.2.211';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.211: setConfig() now only reads the stored toggle-mode preference
+//          from localStorage when show_control_switch_buttons is true.
+//          When it's false, default_control (existing config key, already
+//          exposed in the editor as the "Control" select field) becomes
+//          the sole, authoritative source for _toggleMode - no stale
+//          per-entity/per-browser localStorage value can override it
+//          anymore. No new config keys added; default_control's meaning
+//          is simply redefined from "fallback when no stored value
+//          exists" to "mandatory when the switch buttons are hidden,
+//          fallback otherwise". _setToggleMode()'s localStorage.setItem()
+//          write is unchanged - it's only reachable via clicks on the
+//          switch buttons, which already don't render when
+//          show_control_switch_buttons is false, so that path was
+//          already dead in this state and needed no change.
 // v2.2.210: Renamed the five --icon-button-group-* CSS custom properties to
 //          --control-switch-buttons-* to match the classname rename from
 //          v2.2.209 (which had renamed the classname but missed these):
@@ -1322,10 +1336,12 @@ class ChronoSliderCard extends LitElement {
         : DEFAULT_CONTROL;
 
     let storedControl = null;
-    try {
-      storedControl = window.localStorage.getItem(cscToggleModeStorageKey(config.entity));
-    } catch (e) {
-      storedControl = null;
+    if (this._showControlSwitchButtons) {
+      try {
+        storedControl = window.localStorage.getItem(cscToggleModeStorageKey(config.entity));
+      } catch (e) {
+        storedControl = null;
+      }
     }
     const effectiveControl =
       storedControl === 'buttons' || storedControl === 'slider' ? storedControl : this._defaultControl;
