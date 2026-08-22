@@ -17,9 +17,16 @@ import { live }                  from 'https://unpkg.com/lit@2.0.0/directives/li
 import { unsafeHTML }            from 'https://unpkg.com/lit@2.0.0/directives/unsafe-html.js?module';
 
 // --- Version ---------------------------------------------------------------
-const CARD_VERSION = '2.2.211';
+const CARD_VERSION = '2.2.212';
 
 // --- Version History ---------------------------------------------------------
+// v2.2.212: Renamed CSS custom property --favorites-gap to
+//          --favorites-margin-top (.favorites' margin-top - the gap
+//          between the controls block above and the favorites row).
+//          Default unchanged (16px). Not to be confused with
+//          --favorites-row-gap/--favorites-column-gap (renamed in
+//          v2.2.209), which control the row-gap/column-gap within the
+//          wrapped favorite-button grid itself.
 // v2.2.211: setConfig() now only reads the stored toggle-mode preference
 //          from localStorage when show_control_switch_buttons is true.
 //          When it's false, default_control (existing config key, already
@@ -2108,7 +2115,7 @@ class ChronoSliderCard extends LitElement {
       max-width: var(--favorites-max-width, none);
       row-gap: var(--favorites-row-gap, 16px);
       column-gap: var(--favorites-column-gap, 16px);
-      margin-top: var(--favorites-gap, 16px);
+      margin-top: var(--favorites-margin-top, 16px);
       margin-bottom: var(--favorites-margin-bottom, 8px);
       user-select: none;
     }
