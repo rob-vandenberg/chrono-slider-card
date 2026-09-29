@@ -34,3 +34,27 @@ ha/
 # IDE
 .vscode/
 .idea/
+
+# Never push these (cleanup 2026-09-29)
+*.zip
+*.log
+
+# Removed from repo in cleanup 2026-09-29 (unused artwork, old files)
+/art/Gemini_Generated_Image_azrydkazrydkazry.png
+/art/Gemini_Generated_Image_kvswdykvswdykvsw.png
+/art/banner-0.png
+/art/banner-1.png
+/art/banner-2.png
+/art/banner-3.png
+/art/banner-4.png
+/art/banner-5.png
+/art/banner-6.png
+/art/banner-7.png
+/art/banner-8.png
+/art/banner-9.png
+/art/chrono-slider-card-2.png
+/art/chrono-slider-card.png
+/art/chrono-slider-card.svg
+/art/chrono-slider-cards.png
+/art/chrono-slider-editor.png
+/art/under-construction.png
